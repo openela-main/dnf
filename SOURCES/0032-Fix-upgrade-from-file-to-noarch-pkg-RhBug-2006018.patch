@@ -1,0 +1,34 @@
+From 46562dc76e50d86eed99a102af74a1187a4303e4 Mon Sep 17 00:00:00 2001
+From: Nicola Sella <nsella@redhat.com>
+Date: Thu, 11 Aug 2022 13:56:11 +0200
+Subject: [PATCH] Fix upgrade from file to noarch pkg (RhBug:2006018)
+
+= changelog =
+msg: Fix upgrade pkg from file when installed pkg is noarch and upgrades
+to a different arch
+type: bugfix
+resolves: https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=2006018
+---
+ dnf/base.py | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/dnf/base.py b/dnf/base.py
+index 4ddfae15..aba411ea 100644
+--- a/dnf/base.py
++++ b/dnf/base.py
+@@ -2109,7 +2109,11 @@ class Base(object):
+             sltr.set(pkg=[pkg])
+             self._goal.upgrade(select=sltr)
+             return 1
+-        q = installed.filter(name=pkg.name, arch=[pkg.arch, "noarch"])
++        # do not filter by arch if the package is noarch
++        if pkg.arch == "noarch":
++            q = installed.filter(name=pkg.name)
++        else:
++            q = installed.filter(name=pkg.name, arch=[pkg.arch, "noarch"])
+         if not q:
+             msg = _("Package %s not installed, cannot update it.")
+             logger.warning(msg, pkg.name)
+-- 
+2.37.1
+

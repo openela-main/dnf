@@ -1,0 +1,21 @@
+From 276e3b1d19bfad2a72f75ecbcce478e4f1e575db Mon Sep 17 00:00:00 2001
+From: Gary Leydon <gary.leydon@yale.edu>
+Date: Fri, 21 May 2021 14:16:21 -0400
+Subject: [PATCH] add author
+
+---
+ AUTHORS | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/AUTHORS b/AUTHORS
+index 1981dc4e..f8c9eb83 100644
+--- a/AUTHORS
++++ b/AUTHORS
+@@ -95,3 +95,4 @@ DNF CONTRIBUTORS
+     Vladan Kudlac <vladankudlac@gmail.com>
+     Will Woods <wwoods@redhat.com>
+     Furkan Karcıoğlu <krc440002@gmail.com>
++    Gary Leydon <gary.leydon@yale.edu>
+-- 
+2.35.1
+
