@@ -1,0 +1,30 @@
+From 8f05ee29b7398fa6d18c7113a533f1d8726239df Mon Sep 17 00:00:00 2001
+From: Jaroslav Rohel <jrohel@redhat.com>
+Date: Tue, 12 Apr 2022 12:25:05 +0200
+Subject: [PATCH] [doc] Improve "proxy" configuration option documentation
+ (RhBug:2072332)
+
+---
+ doc/conf_ref.rst | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/doc/conf_ref.rst b/doc/conf_ref.rst
+index 75bcdf75..885a4560 100644
+--- a/doc/conf_ref.rst
++++ b/doc/conf_ref.rst
+@@ -833,10 +833,10 @@ configuration.
+ ``proxy``
+     :ref:`string <string-label>`
+ 
+-    URL of a proxy server to connect through. Set to an empty string to disable the proxy setting inherited from the main section and use direct connection instead. The expected format of this option is ``<scheme>://<ip-or-hostname>[:port]``.
++    URL of a proxy server to connect through. Set to an empty string in the repository configuration to disable proxy setting inherited from the main section. The expected format of this option is ``<scheme>://<ip-or-hostname>[:port]``.
+     (For backward compatibility, '_none_' can be used instead of the empty string.)
+ 
+-    Note: The curl environment variables (such as ``http_proxy``) are effective if this option is unset. See the ``curl`` man page for details.
++    Note: The curl environment variables (such as ``http_proxy``) are effective if this option is unset (or '_none_' is set in the repository configuration). See the ``curl`` man page for details.
+ 
+ ``proxy_username``
+     :ref:`string <string-label>`
+-- 
+2.35.1
+

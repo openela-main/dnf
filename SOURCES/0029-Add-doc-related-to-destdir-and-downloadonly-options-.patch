@@ -1,0 +1,31 @@
+From 96a5bd61ab3b35f00f0b52bcd6428c7aea7d1ca5 Mon Sep 17 00:00:00 2001
+From: Jan Kolarik <jkolarik@redhat.com>
+Date: Wed, 7 Sep 2022 14:27:07 +0200
+Subject: [PATCH] Add doc related to --destdir and --downloadonly options
+ (RhBug:2100811)
+
+= changelog =
+type: bugfix
+resolves: https://bugzilla.redhat.com/show_bug.cgi?id=2100811
+---
+ doc/command_ref.rst | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/doc/command_ref.rst b/doc/command_ref.rst
+index 42aec72c..7a02448c 100644
+--- a/doc/command_ref.rst
++++ b/doc/command_ref.rst
+@@ -190,6 +190,10 @@ Options
+ ``--downloadonly``
+     Download the resolved package set without performing any rpm transaction (install/upgrade/erase).
+ 
++    Packages are removed after the next successful transaction. This applies also when used together
++    with ``--destdir`` option as the directory is considered as a part of the DNF cache. To persist 
++    the packages, use the ``download`` command instead.
++
+ ``-e <error level>, --errorlevel=<error level>``
+     Error output level. This is an integer value between 0 (no error output) and
+     10 (shows all error messages), default is 3. Deprecated, use ``-v`` instead.
+-- 
+2.37.1
+
