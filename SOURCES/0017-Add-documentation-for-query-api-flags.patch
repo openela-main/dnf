@@ -1,0 +1,57 @@
+From 27f26c607c44b8331b23c861241a8509c2452531 Mon Sep 17 00:00:00 2001
+From: sbluhm <stefan.bluhm@clacee.eu>
+Date: Sun, 9 Jan 2022 14:30:19 +0100
+Subject: [PATCH] Add documentation for query api flags
+
+= changelog =
+msg: Add documentation for query api flags
+type: enhancement
+resolves: https://bugzilla.redhat.com/show_bug.cgi?id=2035577
+---
+ AUTHORS          |  1 +
+ doc/api_sack.rst | 14 +++++++++++++-
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/AUTHORS b/AUTHORS
+index f8c9eb83..0077c7ea 100644
+--- a/AUTHORS
++++ b/AUTHORS
+@@ -91,6 +91,7 @@ DNF CONTRIBUTORS
+     Petr Spacek <pspacek@redhat.com>
+     Rob Cutmore <robcutmore@gmail.com>
+     Satoshi Matsumoto <kaorimatz@gmail.com>
++    Stefan Bluhm <stefan.bluhm@clacee.eu>
+     Tomas Kasparek <tkasparek@redhat.com>
+     Vladan Kudlac <vladankudlac@gmail.com>
+     Will Woods <wwoods@redhat.com>
+diff --git a/doc/api_sack.rst b/doc/api_sack.rst
+index 79719878..ac843fc9 100644
+--- a/doc/api_sack.rst
++++ b/doc/api_sack.rst
+@@ -25,10 +25,22 @@
+ 
+   The package sack. Contains metadata information about all known packages, installed and available.
+ 
+-  .. method:: query()
++  .. method:: query(flags=hawkey.APPLY_EXCLUDES)
+ 
+     Return a :class:`Query<dnf.query.Query>` for querying packages contained in this sack.
+ 
++    :ref:`Package filtering <excluded_packages-label>` is applied when creating the query object. The behavior can be adapted using flags. Possible flags:
++
++
++    ==============================   ===========================================================================
++    Flag                             Value meaning
++    ==============================   ===========================================================================
++    hawkey.APPLY_EXCLUDES            Apply all package filtering.
++    hawkey.IGNORE_EXCLUDES           Ignore all package filtering.
++    hawkey.IGNORE_REGULAR_EXCLUDES   Ignore regular excludes defined by configuration files or the command line.
++    hawkey.IGNORE_MODULAR_EXCLUDES   Ignore modular filtering.
++    ==============================   ===========================================================================
++
+ .. function:: rpmdb_sack(base)
+ 
+     Returns a new instance of sack containing only installed packages (@System repo). Useful to get list of the installed RPMs after transaction.
+-- 
+2.35.1
+

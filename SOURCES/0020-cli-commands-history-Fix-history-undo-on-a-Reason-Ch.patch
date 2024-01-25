@@ -1,0 +1,64 @@
+From fe87499e6745795b1dc6225fa102a1242eb9ffc8 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Luk=C3=A1=C5=A1=20Hr=C3=A1zk=C3=BD?= <lhrazky@redhat.com>
+Date: Thu, 17 Feb 2022 18:46:22 +0100
+Subject: [PATCH] cli/commands/history: Fix history undo on a Reason Change
+
+The previous reason needs to be fetched from the history db. It's
+inefficient to parse the nevra after it was serialized in a previous
+step, but that would need bigger code restructuring.
+
+= changelog =
+msg: Fix history undo on a Reason Change
+type: bugfix
+resolves: https://bugzilla.redhat.com/show_bug.cgi?id=2053014
+resolves: https://bugzilla.redhat.com/show_bug.cgi?id=2010259
+---
+ dnf.spec                    |  2 +-
+ dnf/cli/commands/history.py | 11 +++++++++++
+ 2 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/dnf.spec b/dnf.spec
+index 02c8b577..36c3932e 100644
+--- a/dnf.spec
++++ b/dnf.spec
+@@ -2,7 +2,7 @@
+ %define __cmake_in_source_build 1
+ 
+ # default dependencies
+-%global hawkey_version 0.61.1
++%global hawkey_version 0.66.0
+ %global libcomps_version 0.1.8
+ %global libmodulemd_version 2.9.3
+ %global rpm_version 4.14.0
+diff --git a/dnf/cli/commands/history.py b/dnf/cli/commands/history.py
+index 293d93fc..21d04a1a 100644
+--- a/dnf/cli/commands/history.py
++++ b/dnf/cli/commands/history.py
+@@ -223,6 +223,7 @@ class HistoryCommand(commands.Command):
+             "Reinstall": "Reinstalled",
+             "Obsoleted": "Install",
+             "Obsolete": "Obsoleted",
++            "Reason Change": "Reason Change",
+         }
+ 
+         data = serialize_transaction(trans)
+@@ -235,6 +236,16 @@ class HistoryCommand(commands.Command):
+                 if ti["action"] == "Install" and ti.get("reason", None) == "clean":
+                     ti["reason"] = "dependency"
+ 
++                if ti["action"] == "Reason Change" and "nevra" in ti:
++                    subj = hawkey.Subject(ti["nevra"])
++                    nevra = subj.get_nevra_possibilities(forms=[hawkey.FORM_NEVRA])[0]
++                    reason = self.output.history.swdb.resolveRPMTransactionItemReason(
++                        nevra.name,
++                        nevra.arch,
++                        trans.tids()[0] - 1
++                    )
++                    ti["reason"] = libdnf.transaction.TransactionItemReasonToString(reason)
++
+                 if ti.get("repo_id") == hawkey.SYSTEM_REPO_NAME:
+                     # erase repo_id, because it's not possible to perform forward actions from the @System repo
+                     ti["repo_id"] = None
+-- 
+2.35.1
+

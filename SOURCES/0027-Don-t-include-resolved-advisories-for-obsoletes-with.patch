@@ -1,0 +1,47 @@
+From 66a37245e82c60b972ee35879f9c29c27466a27b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ale=C5=A1=20Mat=C4=9Bj?= <amatej@redhat.com>
+Date: Mon, 25 Jul 2022 12:44:17 +0200
+Subject: [PATCH] Don't include resolved advisories for obsoletes with sec.
+ filters (RhBug:2101421)
+
+This makes the obsoletes security filters consistent with upgrade
+security filters.
+
+This API is used from check-update and from Info and List commands.
+- For check-update we don't want to include resolved advisories to have
+  identical result to the actual update. That is bz2101421 use case.
+- For Info and List commands the --obsoletes switch: "List packages
+  installed on the system that are obsoleted by packages in any known
+  repository." Given this specification in makes sense not to
+  consider resolved advisories when we also use security filters.
+
+There is still a general case when someone uses the API or any potential
+future use and I think it is best to have the behavior unified for
+"upgrades" and "obsoletes".
+
+= changelog =
+msg:           Don't include resolved advisories for obsoletes filtering with security filters
+type:          bugfix
+resolves:      https://bugzilla.redhat.com/show_bug.cgi?id=2101421
+
+Tests: https://github.com/rpm-software-management/ci-dnf-stack/pull/1134
+---
+ dnf/base.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/dnf/base.py b/dnf/base.py
+index e606d9fa..e623d98e 100644
+--- a/dnf/base.py
++++ b/dnf/base.py
+@@ -1565,7 +1565,7 @@ class Base(object):
+             obsoletes = query_for_repo(
+                 self.sack.query()).filter(obsoletes_by_priority=inst)
+             # reduce a query to security upgrades if they are specified
+-            obsoletes = self._merge_update_filters(obsoletes, warning=False)
++            obsoletes = self._merge_update_filters(obsoletes, warning=False, upgrade=True)
+             obsoletesTuples = []
+             for new in obsoletes:
+                 obsoleted_reldeps = new.obsoletes
+-- 
+2.37.1
+

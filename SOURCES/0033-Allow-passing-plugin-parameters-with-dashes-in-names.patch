@@ -1,0 +1,62 @@
+From 7a265cf17fe3531e45dde8ae622c496bef1e17ae Mon Sep 17 00:00:00 2001
+From: Jan Kolarik <jkolarik@redhat.com>
+Date: Wed, 10 Aug 2022 16:24:08 +0200
+Subject: [PATCH] Allow passing plugin parameters with dashes in names
+ (RhBug:1980712)
+
+= changelog =
+type: bugfix
+resolves: https://bugzilla.redhat.com/show_bug.cgi?id=1980712
+---
+ dnf/plugin.py | 20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/dnf/plugin.py b/dnf/plugin.py
+index 87c1f08f..b083727d 100644
+--- a/dnf/plugin.py
++++ b/dnf/plugin.py
+@@ -225,17 +225,17 @@ def _get_plugins_files(paths, disable_plugins, enable_plugins):
+             matched = True
+             enable_pattern_tested = False
+             for pattern_skip in disable_plugins:
+-                if fnmatch.fnmatch(plugin_name, pattern_skip):
++                if _plugin_name_matches_pattern(plugin_name, pattern_skip):
+                     pattern_disable_found.add(pattern_skip)
+                     matched = False
+                     for pattern_enable in enable_plugins:
+-                        if fnmatch.fnmatch(plugin_name, pattern_enable):
++                        if _plugin_name_matches_pattern(plugin_name, pattern_enable):
+                             matched = True
+                             pattern_enable_found.add(pattern_enable)
+                     enable_pattern_tested = True
+             if not enable_pattern_tested:
+                 for pattern_enable in enable_plugins:
+-                    if fnmatch.fnmatch(plugin_name, pattern_enable):
++                    if _plugin_name_matches_pattern(plugin_name, pattern_enable):
+                         pattern_enable_found.add(pattern_enable)
+             if matched:
+                 plugins.append(fn)
+@@ -250,6 +250,20 @@ def _get_plugins_files(paths, disable_plugins, enable_plugins):
+     return plugins
+ 
+ 
++def _plugin_name_matches_pattern(plugin_name, pattern):
++    """
++    Checks plugin name matches the pattern.
++
++    The alternative plugin name using dashes instead of underscores is tried
++    in case of original name is not matched.
++
++    (see https://bugzilla.redhat.com/show_bug.cgi?id=1980712)
++    """
++
++    try_names = set((plugin_name, plugin_name.replace('_', '-')))
++    return any(fnmatch.fnmatch(name, pattern) for name in try_names)
++
++
+ def register_command(command_class):
+     # :api
+     """A class decorator for automatic command registration."""
+-- 
+2.37.1
+
