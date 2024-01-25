@@ -1,0 +1,58 @@
+From a32b2f7d596247124ad6ff5ab71bc83bf78f0518 Mon Sep 17 00:00:00 2001
+From: Jan Kolarik <jkolarik@redhat.com>
+Date: Tue, 13 Sep 2022 13:55:35 +0200
+Subject: [PATCH] Add support for rollback of group upgrade rollback
+ (RhBug:2016070)
+
+= changelog =
+type: bugfix
+resolves: https://bugzilla.redhat.com/show_bug.cgi?id=2016070
+---
+ dnf/transaction_sr.py | 20 ++++++++++++--------
+ 1 file changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/dnf/transaction_sr.py b/dnf/transaction_sr.py
+index 5d403a3e..b389f152 100644
+--- a/dnf/transaction_sr.py
++++ b/dnf/transaction_sr.py
+@@ -553,12 +553,14 @@ class TransactionReplay(object):
+ 
+                 if action == "Install":
+                     self._swdb_group_install(group_id, pkg_types, group_data["packages"])
+-                elif action == "Upgrade":
+-                    self._swdb_group_upgrade(group_id, pkg_types, group_data["packages"])
+-                elif action == "Downgraded":
+-                    self._swdb_group_downgrade(group_id, pkg_types, group_data["packages"])
+                 elif action == "Removed":
+                     self._swdb_group_remove(group_id, pkg_types, group_data["packages"])
++                # Groups are not versioned, but a reverse transaction could be applied,
++                # therefore we treat both actions the same way
++                elif action == "Upgrade" or action == "Upgraded":
++                    self._swdb_group_upgrade(group_id, pkg_types, group_data["packages"])
++                elif action == "Downgrade" or action == "Downgraded":
++                    self._swdb_group_downgrade(group_id, pkg_types, group_data["packages"])
+                 else:
+                     errors.append(TransactionError(
+                         _('Unexpected value of group action "{action}" for group "{group}".')
+@@ -584,12 +586,14 @@ class TransactionReplay(object):
+ 
+                 if action == "Install":
+                     self._swdb_environment_install(env_id, pkg_types, env_data["groups"])
+-                elif action == "Upgrade":
+-                    self._swdb_environment_upgrade(env_id, pkg_types, env_data["groups"])
+-                elif action == "Downgraded":
+-                    self._swdb_environment_downgrade(env_id, pkg_types, env_data["groups"])
+                 elif action == "Removed":
+                     self._swdb_environment_remove(env_id, pkg_types, env_data["groups"])
++                # Environments are not versioned, but a reverse transaction could be applied,
++                # therefore we treat both actions the same way
++                elif action == "Upgrade" or action == "Upgraded":
++                    self._swdb_environment_upgrade(env_id, pkg_types, env_data["groups"])
++                elif action == "Downgrade" or action == "Downgraded":
++                    self._swdb_environment_downgrade(env_id, pkg_types, env_data["groups"])
+                 else:
+                     errors.append(TransactionError(
+                         _('Unexpected value of environment action "{action}" for environment "{env}".')
+-- 
+2.37.3
+

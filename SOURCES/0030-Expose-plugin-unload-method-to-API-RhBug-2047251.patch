@@ -1,0 +1,79 @@
+From aa724a639a641943ecf39038fd694abc2037e66d Mon Sep 17 00:00:00 2001
+From: Jan Kolarik <jkolarik@redhat.com>
+Date: Mon, 22 Aug 2022 10:38:30 +0200
+Subject: [PATCH] Expose plugin unload method to API (RhBug:2047251)
+
+= changelog =
+type: bugfix
+resolves: https://bugzilla.redhat.com/show_bug.cgi?id=2047251
+---
+ dnf/base.py                | 5 +++++
+ dnf/plugin.py              | 1 +
+ doc/api_base.rst           | 4 ++++
+ tests/api/test_dnf_base.py | 7 +++++++
+ 4 files changed, 17 insertions(+)
+
+diff --git a/dnf/base.py b/dnf/base.py
+index e623d98e..4ddfae15 100644
+--- a/dnf/base.py
++++ b/dnf/base.py
+@@ -316,6 +316,11 @@ class Base(object):
+         """Run plugins configure() method."""
+         self._plugins._run_config()
+ 
++    def unload_plugins(self):
++        # :api
++        """Run plugins unload() method."""
++        self._plugins._unload()
++
+     def update_cache(self, timer=False):
+         # :api
+ 
+diff --git a/dnf/plugin.py b/dnf/plugin.py
+index 06066e79..87c1f08f 100644
+--- a/dnf/plugin.py
++++ b/dnf/plugin.py
+@@ -164,6 +164,7 @@ class Plugins(object):
+         self._caller('transaction')
+ 
+     def _unload(self):
++        logger.debug(_('Plugins were unloaded'))
+         del sys.modules[DYNAMIC_PACKAGE]
+ 
+     def unload_removed_plugins(self, transaction):
+diff --git a/doc/api_base.rst b/doc/api_base.rst
+index 03396b69..35cbeef5 100644
+--- a/doc/api_base.rst
++++ b/doc/api_base.rst
+@@ -97,6 +97,10 @@
+ 
+      Configure plugins by running their configure() method.
+ 
++  .. method:: unload_plugins()
++
++     Unload all plugins.
++
+   .. method:: fill_sack([load_system_repo=True, load_available_repos=True])
+ 
+     Setup the package sack. If `load_system_repo` is ``True``, load information about packages in the local RPMDB into the sack. Else no package is considered installed during dependency solving. If `load_available_repos` is ``True``, load information about packages from the available repositories into the sack.
+diff --git a/tests/api/test_dnf_base.py b/tests/api/test_dnf_base.py
+index 33598189..e84e272b 100644
+--- a/tests/api/test_dnf_base.py
++++ b/tests/api/test_dnf_base.py
+@@ -95,6 +95,13 @@ class DnfBaseApiTest(TestCase):
+ 
+         self.base.configure_plugins()
+ 
++    def test_unload_plugins(self):
++        # Base.unload_plugins()
++        self.assertHasAttr(self.base, "unload_plugins")
++
++        self.base.init_plugins()
++        self.base.unload_plugins()
++
+     def test_update_cache(self):
+         # Base.update_cache(self, timer=False)
+         self.assertHasAttr(self.base, "update_cache")
+-- 
+2.37.1
+
