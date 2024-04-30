@@ -69,7 +69,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:                 dnf
 Version:              4.14.0
-Release:              8%{?dist}
+Release:              9%{?dist}
 Summary:              %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:              GPLv2+
@@ -86,7 +86,10 @@ Patch8:               0008-Omit-src-RPMs-from-check-update-RhBug-2151910.patch
 Patch9:               0009-automatic-Fix-online-detection-with-proxy-RhBz2022440.patch
 Patch10:              0010-automatic-Return-an-error-when-transaction-fails-RhB.patch
 Patch11:              0011-Document-symbols-in-dnf-history-list-output.patch
-Patch12:              9999-change-bugtracker.diff
+Patch12:              0012-RHEL-11345-Fix-japanese-translations.patch
+Patch13:              0013-RHEL-6396-Fix-substitution-in-kvp-in-add_new_repo.patch
+Patch14:              0014-RHEL-6304-base-Add-obsoleters-of-only-latest-versions.patch
+Patch15:              9999-change-bugtracker.diff
 
 BuildArch:            noarch
 BuildRequires:        cmake
@@ -375,8 +378,13 @@ popd
 %{python3_sitelib}/%{name}/automatic/
 
 %changelog
-* Thu Jan 25 2024 Release Engineering <releng@openela.org> - 4.14.0
+* Tue Apr 30 2024 Release Engineering <releng@openela.org> - 4.14.0
 - Add OpenELA bugtracker
+
+* Wed Oct 25 2023 Jaroslav Rohel <jrohel@redhat.com> - 4.14.0-9
+- Fix japanese translations (RHEL-11345)
+- Fix substitution in kay-value-pair list in add_new_repo (RHEL-6396)
+- base: Add obsoleters of only latest versions (RHEL-6304)
 
 * Wed Jun 28 2023 Jaroslav Rohel <jrohel@redhat.com> - 4.14.0-8
 - Return an error when transaction fails (RhBug:2170093,2212262)
