@@ -66,7 +66,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:                 dnf
 Version:              4.7.0
-Release:              19%{?dist}
+Release:              20%{?dist}
 Summary:              %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:              GPLv2+
@@ -120,7 +120,10 @@ Patch0041:            0041-Omit-src-RPMs-from-check-update-RhBug-2151910.patch
 Patch0042:            0042-Backport-automatic-Fix-onl-detect-proxy-RhBz2022440.patch
 Patch0043:            0043-automatic-Return-an-error-when-transaction-fails-RhB.patch
 Patch0044:            0044-Document-symbols-in-dnf-history-list-output.patch
-Patch45:              9999-patch-up-dnf.patch
+Patch0045:            0045-RHEL-1245-Remove-usrbin-from-syspath-noimpor-garbage.patch
+Patch0046:            0046-RHEL-6393-Fix-japanese-translations.patch
+Patch0047:            0047-RHEL-11786-Fix-substitution-in-kvp-in-add_new_repo.patch
+Patch48:              9999-patch-up-dnf.patch
 
 
 BuildArch:            noarch
@@ -421,8 +424,13 @@ popd
 %{python3_sitelib}/%{name}/automatic/
 
 %changelog
-* Thu Jan 25 2024 Release Engineering <releng@openela.org> - 4.7.0
+* Wed May 22 2024 Release Engineering <releng@openela.org> - 4.7.0
 - Add OpenELA bugtracker
+
+* Mon Oct 16 2023 Jaroslav Rohel <jrohel@redhat.com> - 4.7.0-20
+- Remove /usr/bin from sys.path to avoid accidentally importing garbage (RHEL-1245)
+- Fix japanese translations (RHEL-6393)
+- Fix substitution in kay-value-pair list in add_new_repo (RHEL-11786)
 
 * Wed Jun 28 2023 Jaroslav Rohel <jrohel@redhat.com> - 4.7.0-19
 - Document symbols in `dnf history list` output (RhBug:2172067)

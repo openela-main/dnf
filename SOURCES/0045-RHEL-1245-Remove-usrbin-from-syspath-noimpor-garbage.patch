@@ -1,0 +1,85 @@
+From 29f4df4bf7bf7cb9099dbc7c834441ce4e75b623 Mon Sep 17 00:00:00 2001
+From: Miro Hrončok <miro@hroncok.cz>
+Date: Wed, 23 Feb 2022 13:25:12 +0100
+Subject: [PATCH] RHEL-1245: Remove /usr/bin from sys.path to avoid accidentally importing garbage
+
+See https://bugzilla.redhat.com/show_bug.cgi?id=2057340
+and https://github.com/benjaminp/six/issues/359
+
+dnf should never import Python modules from /usr/bin but users can
+have files in there that look like Python modules and Python will
+try to import them and fail.
+
+Consider a tool that is *not* written in Python and is called "copy.pyc".
+Naturally, it resides in /usr/bin/copy.pyc and dnf fails:
+
+    Traceback (most recent call last):
+      File "/usr/bin/dnf", line 57, in <module>
+        from dnf.cli import main
+      File "/usr/lib/python3.10/site-packages/dnf/__init__.py", line 30, in <module>
+        import dnf.base
+      File "/usr/lib/python3.10/site-packages/dnf/base.py", line 31, in <module>
+        from copy import deepcopy
+    ImportError: bad magic number in 'copy': b'...'
+
+Similarly, a tool actually written in Python, called "copy.py"
+might as well own /usr/bin/copy.py and dnf fails as well:
+
+    Traceback (most recent call last):
+      File "/usr/bin/dnf", line 57, in <module>
+        from dnf.cli import main
+      File "/usr/lib/python3.10/site-packages/dnf/__init__.py", line 30, in <module>
+        import dnf.base
+      File "/usr/lib/python3.10/site-packages/dnf/base.py", line 31, in <module>
+        from copy import deepcopy
+    ImportError: cannot import name 'deepcopy' from 'copy' (/usr/bin/copy.py)
+
+Either problem can happen for a variety of names.
+We better not let that happen.
+
+A more general solution that would prevent Python doing this entirely
+does not exists yet, see https://discuss.python.org/t/4235
+
+Hence, proposing this to dnf, which is a critical piece of the system.
+---
+ bin/dnf-automatic.in | 6 +++++-
+ bin/dnf.in           | 6 +++++-
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/bin/dnf-automatic.in b/bin/dnf-automatic.in
+index 5b06aa2..17e35a0 100755
+--- a/bin/dnf-automatic.in
++++ b/bin/dnf-automatic.in
+@@ -23,7 +23,11 @@ import os
+ import sys
+ 
+ here = sys.path[0]
+-if here != '/usr/bin':
++if here == '/usr/bin':
++    # we never import Python modules from /usr/bin
++    # removing this lowers the risk of accidental imports of weird files
++    del sys.path[0]
++else:
+     # git checkout
+     dnf_toplevel = os.path.dirname(here)
+     sys.path[0] = dnf_toplevel
+diff --git a/bin/dnf.in b/bin/dnf.in
+index 645d0f0..55ceb3f 100755
+--- a/bin/dnf.in
++++ b/bin/dnf.in
+@@ -48,7 +48,11 @@ if __name__ != "__main__":
+     sys.exit(1)
+ 
+ here = sys.path[0]
+-if here != '/usr/bin':
++if here == '/usr/bin':
++    # we never import Python modules from /usr/bin
++    # removing this lowers the risk of accidental imports of weird files
++    del sys.path[0]
++else:
+     # git checkout
+     import os
+     dnf_toplevel = os.path.dirname(here)
+--
+libgit2 1.6.4
+
