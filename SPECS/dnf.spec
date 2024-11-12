@@ -69,7 +69,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:                 dnf
 Version:              4.14.0
-Release:              9%{?dist}
+Release:              17%{?dist}
 Summary:              %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:              GPLv2+
@@ -89,7 +89,19 @@ Patch11:              0011-Document-symbols-in-dnf-history-list-output.patch
 Patch12:              0012-RHEL-11345-Fix-japanese-translations.patch
 Patch13:              0013-RHEL-6396-Fix-substitution-in-kvp-in-add_new_repo.patch
 Patch14:              0014-RHEL-6304-base-Add-obsoleters-of-only-latest-versions.patch
-Patch15:              9999-change-bugtracker.diff
+Patch15:              0015-Add-all-candidates-for-reinstall-to-solver.patch
+Patch16:              0016-Fix-handling-installonly-packages-reasons.patch
+Patch17:              0017-Remove-confusing-sentence-from-documentation.patch
+Patch18:              0018-Remove-leaf-word-from-documentation.patch
+Patch19:              0019-Update-documentation-of-history-userinstalled-comman.patch
+Patch20:              0020-automatic-Use-add_security_filters-not-_update_secur.patch
+Patch21:              0021-remove-duplicates-when-no-duplicates-exit-with-0-RHE.patch
+Patch22:              0022-remove-oldinstallonly-when-no-old-installonly-packag.patch
+Patch23:              0023-Limit-queries-to-nevra-forms-when-provided-by-comman.patch
+Patch24:              0024-doc-Remove-provide-of-spec-definition-for-repoquery-.patch
+Patch25:              0025-man-Improve-upgrade-minimal-command-docs-RHEL-6417.patch
+Patch26:              0026-doc-Makecache-with-timer-tries-only-one-mirror.patch
+Patch27:              9999-change-bugtracker.diff
 
 BuildArch:            noarch
 BuildRequires:        cmake
@@ -378,8 +390,40 @@ popd
 %{python3_sitelib}/%{name}/automatic/
 
 %changelog
-* Tue Apr 30 2024 Release Engineering <releng@openela.org> - 4.14.0
+* Tue Nov 12 2024 Release Engineering <releng@openela.org> - 4.14.0
 - Add OpenELA bugtracker
+
+* Tue Aug 06 2024 Petr Pisar <ppisar@redhat.com> - 4.14.0-17
+- Revert more specific error message on a locked OSTree system or a bootc system
+  without a usr-overlay (RHEL-49670)
+
+* Wed Jul 24 2024 Petr Pisar <ppisar@redhat.com> - 4.14.0-16
+- More specific error message on a locked OSTree system or a bootc system
+  without a usr-overlay (RHEL-49670)
+
+* Wed Jun 12 2024 Petr Pisar <ppisar@redhat.com> - 4.14.0-15
+- Document that "dnf makecache --timer" exits on a first failed mirror
+  (RHEL-1342)
+
+* Mon Jun 03 2024 Petr Pisar <ppisar@redhat.com> - 4.14.0-14
+- Fix dnf upgrade-minimal documentation in dnf(8) manual (RHEL-6417)
+
+* Thu May 23 2024 Petr Pisar <ppisar@redhat.com> - 4.14.0-13
+- Fix dnf remove-n, install-n, and autoremove-n commands to only match package
+  names (RHEL-38470)
+
+* Tue May 21 2024 Petr Pisar <ppisar@redhat.com> - 4.14.0-12
+- Fix reporting nothing-to-do for "dnf remove --duplicates" (RHEL-6424)
+- Fix reporting nothing-to-do for "dnf remove --oldinstallonly" (RHEL-6424)
+
+* Mon May 06 2024 Petr Pisar <ppisar@redhat.com> - 4.14.0-11
+- Fix handling an installation reason of install-only packages on autoremove
+  (RHEL-15902)
+- Fix dnf-automatic service to apply security updates the same way as dnf tool
+  (RHEL-21874)
+
+* Tue Apr 23 2024 Petr Pisar <ppisar@redhat.com> - 4.14.0-10
+- Fix preferring the lowest-cost repositories on a reinstallation (RHEL-25005)
 
 * Wed Oct 25 2023 Jaroslav Rohel <jrohel@redhat.com> - 4.14.0-9
 - Fix japanese translations (RHEL-11345)

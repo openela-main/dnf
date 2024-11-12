@@ -1,0 +1,36 @@
+From 2ea32ace13f6a30f86e03b690f284c0ec0992a19 Mon Sep 17 00:00:00 2001
+From: Jaroslav Mracek <jmracek@redhat.com>
+Date: Fri, 8 Mar 2024 12:56:57 +0100
+Subject: [PATCH 3/4] Remove "leaf" word from documentation
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: a6d4cd745ce27c09d6cdb4302177b2bfed600549
+
+Leaf packages term is not define in documentation and it even
+represent different set of packages that are showed by leaves command.
+
+Related: https://issues.redhat.com/browse/RHELDOCS-17711
+Resolves: https://issues.redhat.com/browse/RHEL-15902
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ doc/command_ref.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/doc/command_ref.rst b/doc/command_ref.rst
+index b92a1f10..8991df2f 100644
+--- a/doc/command_ref.rst
++++ b/doc/command_ref.rst
+@@ -499,7 +499,7 @@ Autoremove Command
+ 
+ ``dnf [options] autoremove``
+ 
+-    Removes all "leaf" packages from the system that were originally installed as dependencies of user-installed packages, but which are no longer required by any such package.
++    Removes all packages from the system that were originally installed as dependencies of user-installed packages, but which are no longer required by any such package.
+ 
+ ``dnf [options] autoremove <spec>...``
+ 
+-- 
+2.45.0
+

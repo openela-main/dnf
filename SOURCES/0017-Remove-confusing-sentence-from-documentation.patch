@@ -1,0 +1,36 @@
+From 64ca173adf414354c158e429ffec23e4560bb65f Mon Sep 17 00:00:00 2001
+From: Jaroslav Mracek <jmracek@redhat.com>
+Date: Fri, 8 Mar 2024 12:51:26 +0100
+Subject: [PATCH 2/4] Remove confusing sentence from documentation
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: 824a95e1786b460102d9bf4a2cec0ce7973f882e
+
+Installonly packages are handled by autoremove command in a similar
+way like other package.
+
+Resolves: https://issues.redhat.com/browse/RHEL-15902
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ doc/command_ref.rst | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/doc/command_ref.rst b/doc/command_ref.rst
+index 0e6cea01..b92a1f10 100644
+--- a/doc/command_ref.rst
++++ b/doc/command_ref.rst
+@@ -501,9 +501,6 @@ Autoremove Command
+ 
+     Removes all "leaf" packages from the system that were originally installed as dependencies of user-installed packages, but which are no longer required by any such package.
+ 
+-Packages listed in :ref:`installonlypkgs <installonlypkgs-label>` are never automatically removed by
+-this command.
+-
+ ``dnf [options] autoremove <spec>...``
+ 
+     This is an alias for the :ref:`\remove_command-label` command with clean_requirements_on_remove set to
+-- 
+2.45.0
+

@@ -1,0 +1,40 @@
+From 103d442551bfa11a2dae72fd31941ba1d5435bb6 Mon Sep 17 00:00:00 2001
+From: Jan Kolarik <jkolarik@redhat.com>
+Date: Tue, 30 Apr 2024 06:50:14 +0000
+Subject: [PATCH] man: Improve upgrade-minimal command docs (RHEL-6417)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: 4a2b425d3f0b7ea95f9584834e86a15ad3c447ab
+
+Making the man pages for the `upgrade-minimal` command clearer about how packages with advisories are upgraded.
+
+Resolves: https://issues.redhat.com/browse/RHEL-6417
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ doc/command_ref.rst | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/doc/command_ref.rst b/doc/command_ref.rst
+index c419e7ed..42dd6e8a 100644
+--- a/doc/command_ref.rst
++++ b/doc/command_ref.rst
+@@ -1761,11 +1761,11 @@ Upgrade-Minimal Command
+ | Deprecated aliases: ``update-minimal``
+ 
+ ``dnf [options] upgrade-minimal``
+-    Updates each package to the latest available version that provides a bugfix, enhancement
+-    or a fix for a security issue (security).
++    Updates each package to the nearest available version that provides
++    a bugfix, enhancement or a fix for a security issue (security).
+ 
+ ``dnf [options] upgrade-minimal <package-spec>...``
+-    Updates each specified package to the latest available version that provides
++    Updates each specified package to the nearest available version that provides
+     a bugfix, enhancement or a fix for security issue (security). Updates
+     dependencies as necessary.
+ 
+-- 
+2.45.2
+

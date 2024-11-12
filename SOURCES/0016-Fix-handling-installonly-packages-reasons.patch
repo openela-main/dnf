@@ -1,0 +1,41 @@
+From 657197afd95f387d0c60a288b7cdcbfa914f9cd2 Mon Sep 17 00:00:00 2001
+From: Jaroslav Mracek <jmracek@redhat.com>
+Date: Mon, 11 Mar 2024 12:36:48 +0100
+Subject: [PATCH 1/4] Fix handling installonly packages reasons
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: a4d815e4df87f5afbae9d37c7faf6a9871d50b53
+
+The original code took the first item from all remaining packages.
+It means a random reason and use it to keep installonly package reason.
+
+Related: https://issues.redhat.com/browse/RHEL-15902
+Closes: https://github.com/rpm-software-management/dnf/issues/2061
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf/base.py | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/dnf/base.py b/dnf/base.py
+index adb5ad6f..b8237183 100644
+--- a/dnf/base.py
++++ b/dnf/base.py
+@@ -815,9 +815,11 @@ class Base(object):
+         if erasures:
+             remaining_installed_query = self.sack.query(flags=hawkey.IGNORE_EXCLUDES).installed()
+             remaining_installed_query.filterm(pkg__neq=erasures)
++            remaining_installed_query.apply()
+             for pkg in erasures:
+-                if remaining_installed_query.filter(name=pkg.name):
+-                    remaining = remaining_installed_query[0]
++                tmp_remaining_installed_query = remaining_installed_query.filter(name=pkg.name, arch=pkg.arch)
++                if tmp_remaining_installed_query:
++                    remaining = tmp_remaining_installed_query[0]
+                     ts.get_reason(remaining)
+                     self.history.set_reason(remaining, ts.get_reason(remaining))
+                 self._ds_callback.pkg_added(pkg, 'e')
+-- 
+2.45.0
+

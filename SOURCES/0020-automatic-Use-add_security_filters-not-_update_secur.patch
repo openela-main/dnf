@@ -1,0 +1,39 @@
+From 5388d980c8137c3ee6924f145bd284169d838fad Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Tue, 30 Jan 2024 21:36:46 +0000
+Subject: [PATCH] automatic: Use add_security_filters, not
+ _update_security_filters
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: 0b4b8cc8940a4073b33f1bb772651ae27e55f299
+Resolves: https://issues.redhat.com/browse/RHEL-21874
+
+It seems that these two approaches for selecting security updates
+sometimes disagree. The regular `dnf update` command uses
+base.add_security_filters to select security updates, so dnf-automatic
+should do the same.
+
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf/automatic/main.py | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/dnf/automatic/main.py b/dnf/automatic/main.py
+index f6f4049b..caef627f 100644
+--- a/dnf/automatic/main.py
++++ b/dnf/automatic/main.py
+@@ -375,8 +375,7 @@ def main(args):
+ 
+ def upgrade(base, upgrade_type):
+     if upgrade_type == 'security':
+-        base._update_security_filters.append(base.sack.query().upgrades().filterm(
+-            advisory_type='security'))
++        base.add_security_filters("gte", ("security",))
+         base.upgrade_all()
+     elif upgrade_type == 'default':
+         base.upgrade_all()
+-- 
+2.45.0
+

@@ -1,0 +1,38 @@
+From c24e1521813dc002994f243c2b9de331b763b434 Mon Sep 17 00:00:00 2001
+From: Pavla Kratochvilova <pkratoch@redhat.com>
+Date: Fri, 5 Apr 2024 14:42:38 +0200
+Subject: [PATCH 1/2] remove --duplicates: when no duplicates, exit with 0
+ (RHEL-6424)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: 720338fed8124b120b56cc99cc0b13dfe48ffe95
+
+If no duplicates are present, then the command succesfully removed all
+duplicates and should exit with 0 and write the message to stdout
+instead of stderr.
+
+Resolves: https://issues.redhat.com/browse/RHEL-6424
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf/cli/commands/remove.py | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/dnf/cli/commands/remove.py b/dnf/cli/commands/remove.py
+index e455ba6e..af9622fd 100644
+--- a/dnf/cli/commands/remove.py
++++ b/dnf/cli/commands/remove.py
+@@ -92,7 +92,8 @@ class RemoveCommand(commands.Command):
+             instonly = self.base._get_installonly_query(q.installed())
+             dups = q.duplicated().difference(instonly)
+             if not dups:
+-                raise dnf.exceptions.Error(_('No duplicated packages found for removal.'))
++                logger.info(_('No duplicated packages found for removal.'))
++                return
+ 
+             for (name, arch), pkgs_list in dups._na_dict().items():
+                 if len(pkgs_list) < 2:
+-- 
+2.45.0
+

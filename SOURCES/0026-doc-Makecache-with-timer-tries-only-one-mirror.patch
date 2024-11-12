@@ -1,0 +1,38 @@
+From 9ceb9b3591899aaa9bb4932bc20be2fa650cbddc Mon Sep 17 00:00:00 2001
+From: Pavla Kratochvilova <pkratoch@redhat.com>
+Date: Mon, 18 Mar 2024 11:58:08 +0100
+Subject: [PATCH] doc: Makecache with timer tries only one mirror
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: a6d82221ae32045f0f788708a52d2f2bf5c5740b
+Related: https://bugzilla.redhat.com/show_bug.cgi?id=922667
+Related: https://issues.redhat.com/browse/RHEL-1342
+
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ doc/command_ref.rst | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/doc/command_ref.rst b/doc/command_ref.rst
+index 42dd6e8a..36817c00 100644
+--- a/doc/command_ref.rst
++++ b/doc/command_ref.rst
+@@ -973,10 +973,11 @@ Makecache Command
+ 
+ ``dnf [options] makecache --timer``
+     Like plain ``makecache``, but instructs DNF to be more resource-aware,
+-    meaning it will not do anything if running on battery power and will terminate
++    meaning it will not do anything if running on battery power, it will terminate
+     immediately if it's too soon after the last successful ``makecache`` run
+     (see :manpage:`dnf.conf(5)`, :ref:`metadata_timer_sync
+-    <metadata_timer_sync-label>`).
++    <metadata_timer_sync-label>`), and if the first mirror in a repository mirrorlist fails,
++    it will not try to synchronize the metadata from more mirrors for that repository.
+ 
+ .. _mark_command-label:
+ 
+-- 
+2.45.2
+
