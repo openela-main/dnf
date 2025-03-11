@@ -1,0 +1,36 @@
+From a1feaf8c26433325dd939a4bb0c47b50b44cfe2d Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Mon, 13 Mar 2023 14:50:41 -0400
+Subject: [PATCH 48/49] smtplib: catch OSError, not SMTPException
+
+Upstream commit: aab7defca4fd827ede02336e5a0cf95e8691fb74
+
+Some, but not all, types of connection error are caught by smtplib and
+reraised as an smtplib.SMTPException. Notably, TimeoutError,
+socket.gaierror (name resolution failure), and ConnectionRefusedError
+and are not caught.
+
+The more generic OSError should be caught here instead.
+
+Resolves #1905
+Resolves: https://issues.redhat.com/browse/RHEL-46030
+---
+ dnf/automatic/emitter.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/dnf/automatic/emitter.py b/dnf/automatic/emitter.py
+index 4aea4b02..648f1a1d 100644
+--- a/dnf/automatic/emitter.py
++++ b/dnf/automatic/emitter.py
+@@ -106,7 +106,7 @@ class EmailEmitter(Emitter):
+             smtp = smtplib.SMTP(self._conf.email_host, timeout=300)
+             smtp.sendmail(email_from, email_to, message.as_string())
+             smtp.close()
+-        except smtplib.SMTPException as exc:
++        except OSError as exc:
+             msg = _("Failed to send an email via '%s': %s") % (
+                 self._conf.email_host, exc)
+             logger.error(msg)
+-- 
+2.48.1
+

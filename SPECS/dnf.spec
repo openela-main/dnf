@@ -66,7 +66,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:                 dnf
 Version:              4.7.0
-Release:              20%{?dist}
+Release:              21%{?dist}
 Summary:              %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:              GPLv2+
@@ -123,7 +123,10 @@ Patch0044:            0044-Document-symbols-in-dnf-history-list-output.patch
 Patch0045:            0045-RHEL-1245-Remove-usrbin-from-syspath-noimpor-garbage.patch
 Patch0046:            0046-RHEL-6393-Fix-japanese-translations.patch
 Patch0047:            0047-RHEL-11786-Fix-substitution-in-kvp-in-add_new_repo.patch
-Patch48:              9999-patch-up-dnf.patch
+Patch0048:            0048-smtplib-catch-OSError-not-SMTPException.patch
+Patch0049:            0049-automatic-Check-availability-of-config-file.patch
+Patch0050:            0050-Fix-missing-import-in-automatic.patch
+Patch51:              9999-patch-up-dnf.patch
 
 
 BuildArch:            noarch
@@ -424,8 +427,12 @@ popd
 %{python3_sitelib}/%{name}/automatic/
 
 %changelog
-* Wed May 22 2024 Release Engineering <releng@openela.org> - 4.7.0
+* Tue Mar 11 2025 Release Engineering <releng@openela.org> - 4.7.0
 - Add OpenELA bugtracker
+
+* Wed Jan 29 2025 Marek Blaha <mblaha@redhat.com> - 4.7.0-21
+- automatic: catch OSError, not SMTPException on smtp errors (RHEL-71545)
+- automatic: Check availability of config file (RHEL-71545)
 
 * Mon Oct 16 2023 Jaroslav Rohel <jrohel@redhat.com> - 4.7.0-20
 - Remove /usr/bin from sys.path to avoid accidentally importing garbage (RHEL-1245)

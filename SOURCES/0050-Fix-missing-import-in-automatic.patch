@@ -1,0 +1,25 @@
+From 75c59dcb38d5672ffcfea9bb4cc999ab30294fe9 Mon Sep 17 00:00:00 2001
+From: Marek Blaha <mblaha@redhat.com>
+Date: Wed, 29 Jan 2025 13:29:34 +0100
+Subject: [PATCH] Fix missing import in automatic
+
+Fixes omitted `import os` in previous commit.
+---
+ dnf/automatic/main.py | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/dnf/automatic/main.py b/dnf/automatic/main.py
+index 3d73ffce..9d680e9e 100644
+--- a/dnf/automatic/main.py
++++ b/dnf/automatic/main.py
+@@ -24,6 +24,7 @@ from __future__ import unicode_literals
+ 
+ import argparse
+ import logging
++import os
+ import random
+ import socket
+ import time
+-- 
+2.48.1
+
