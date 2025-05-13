@@ -1,0 +1,47 @@
+From ca4c52214b16fe298c44939cd7aaccd9b7549869 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Petr=20P=C3=ADsa=C5=99?= <ppisar@redhat.com>
+Date: Thu, 15 Aug 2024 14:04:55 +0200
+Subject: [PATCH 4/4] Allow --installroot on read-only bootc system
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: a1aa8d0e048751859a2bec1b2fb12fcca93c6e83
+
+Some people use --installroot on a read-only bootc system to install
+a system into a chroot subtree. However, current bootc check did not
+take into account --installroot and rejected the operation.
+
+This patch augments the check for the installroot being different
+from /.
+
+It's pointless to check for installroot writability here because
+installroot is written before this check when updating the
+repositories and computing a transaction. Moving this check sooner
+would not help because some directories (/opt, /) are kept read-only
+even on writable bootc.
+
+Resolves: #2108
+Resolves: https://issues.redhat.com/browse/RHEL-49670
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf/cli/cli.py | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
+index 99af9069b..36cfa74b5 100644
+--- a/dnf/cli/cli.py
++++ b/dnf/cli/cli.py
+@@ -214,7 +214,8 @@ class BaseCli(dnf.Base):
+             elif 'test' in self.conf.tsflags:
+                 logger.info(_("{prog} will only download packages, install gpg keys, and check the "
+                               "transaction.").format(prog=dnf.util.MAIN_PROG_UPPER))
+-            if dnf.util._is_bootc_host():
++            if dnf.util._is_bootc_host() and \
++                    os.path.realpath(self.conf.installroot) == "/":
+                 _bootc_host_msg = _("""
+ *** Error: system is configured to be read-only; for more
+ *** information run `bootc --help`.
+-- 
+2.46.2
+

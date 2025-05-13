@@ -2,7 +2,7 @@
 %define __cmake_in_source_build 1
 
 # default dependencies
-%global hawkey_version 0.66.0
+%global hawkey_version 0.74.0
 %global libcomps_version 0.1.8
 %global libmodulemd_version 2.9.3
 %global rpm_version 4.14.0
@@ -19,6 +19,10 @@
 
 %if 0%{?rhel} == 7 && 0%{?centos}
     %global rpm_version 4.11.3-25.el7.centos.1
+%endif
+
+%if 0%{?rhel} == 9
+    %global hawkey_version 0.69.0-13
 %endif
 
 # override dependencies for fedora 26
@@ -69,7 +73,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:                 dnf
 Version:              4.14.0
-Release:              17%{?dist}
+Release:              25%{?dist}
 Summary:              %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:              GPLv2+
@@ -101,7 +105,25 @@ Patch23:              0023-Limit-queries-to-nevra-forms-when-provided-by-comman.
 Patch24:              0024-doc-Remove-provide-of-spec-definition-for-repoquery-.patch
 Patch25:              0025-man-Improve-upgrade-minimal-command-docs-RHEL-6417.patch
 Patch26:              0026-doc-Makecache-with-timer-tries-only-one-mirror.patch
-Patch27:              9999-change-bugtracker.diff
+Patch27:              0027-Add-detection-for-ostree-based-systems-and-warn-user.patch
+Patch28:              0028-Update-ostree-bootc-host-system-check.patch
+Patch29:              0029-Update-bootc-hosts-message-to-point-to-bootc-help.patch
+Patch30:              0030-Allow-installroot-on-read-only-bootc-system.patch
+Patch31:              0031-smtplib-catch-OSError-not-SMTPException.patch
+Patch32:              0032-Allow-downloadonly-on-read-only-bootc-system.patch
+Patch33:              0033-automatic-Check-availability-of-config-file.patch
+Patch34:              0034-automatic-emitters-send-error-messages.patch
+Patch35:              0035-automatic-Enhance-errors-reporting.patch
+Patch36:              0036-Update-need_reboot-for-dnf-automatic.patch
+Patch37:              0037-automatic-Fix-incorrect-Error-class-instantiation.patch
+PAtch38:              0038-doc-disableexcludepkgs-all-doesn-t-affect-just-file.patch
+Patch39:              0039-Add-support-for-transient.patch
+Patch40:              0040-bootc-Document-transient-and-persistence.patch
+Patch41:              0041-bootc-Use-ostree-GObject-API-to-get-deployment-statu.patch
+Patch42:              0042-bootc-Re-locking-use-ostree-admin-unlock-transient.patch
+Patch43:              0043-spec-Add-dnf-bootc-subpackage.patch
+Patch44:              0044-Require-libdnf-0.74.0-with-persistence-option.patch
+Patch45:              9999-change-bugtracker.diff
 
 BuildArch:            noarch
 BuildRequires:        cmake
@@ -210,6 +232,17 @@ Requires:             %{name} = %{version}-%{release}
 
 %description automatic
 Systemd units that can periodically download package upgrades and apply them.
+
+%package bootc
+Summary:              %{pkg_summary} - additional bootc dependencies
+Requires:             python3-%{name} = %{version}-%{release}
+Requires:             ostree
+Requires:             ostree-libs
+Requires:             python3-gobject-base
+Requires:             util-linux-core
+
+%description bootc
+Additional dependencies needed to perform transactions on booted bootc (bootable containers) systems.
 
 
 %prep
@@ -389,9 +422,41 @@ popd
 %{_unitdir}/%{name}-automatic-install.timer
 %{python3_sitelib}/%{name}/automatic/
 
+%files bootc
+# bootc subpackage does not include any files
+
 %changelog
-* Tue Nov 12 2024 Release Engineering <releng@openela.org> - 4.14.0
+* Tue May 13 2025 Release Engineering <releng@openela.org> - 4.14.0
 - Add OpenELA bugtracker
+
+* Tue Feb 04 2025 Petr Pisar <ppisar@redhat.com> - 4.14.0-25
+- Add support for transient transactions (RHEL-70917)
+
+* Mon Jan 13 2025 Ales Matej <amatej@redhat.com> - 4.14.0-24
+- doc: `--disableexcludepkgs=all` doesn't affect just file configuration
+  (RHEL-28779)
+
+* Thu Dec 12 2024 Marek Blaha <mblaha@redhat.com> - 4.14.0-23
+- automatic: Update need_reboot to match needs-restarting (RHEL-62830)
+
+* Wed Dec 11 2024 Marek Blaha <mblaha@redhat.com> - 4.14.0-22
+- automatic: Added feature to allow emitters to invoke on dnf error
+  (RHEL-45505, RHEL-61882)
+
+* Mon Oct 21 2024 Marek Blaha <mblaha@redhat.com> - 4.14.0-21
+- automatic: Check availability of config file (RHEL-49743)
+
+* Thu Oct 10 2024 Petr Pisar <ppisar@redhat.com> - 4.14.0-20
+- Allow "dnf install --downloadonly" on locked OSTree and bootc systems
+  (RHEL-61745)
+
+* Mon Oct 07 2024 Marek Blaha <mblaha@redhat.com> - 4.14.0-19
+- Catch more specific OSError instead of SMTPException in dnf-automatic email
+  emitter (RHEL-49743)
+
+* Tue Oct 01 2024 Petr Pisar <ppisar@redhat.com> - 4.14.0-18
+- More specific error message on a locked OSTree system or a bootc system
+  without a usr-overlay (RHEL-49670)
 
 * Tue Aug 06 2024 Petr Pisar <ppisar@redhat.com> - 4.14.0-17
 - Revert more specific error message on a locked OSTree system or a bootc system

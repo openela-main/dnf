@@ -1,0 +1,45 @@
+From 19754a7c80e1c2232c370f394ad0d36f5713bf1e Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Wed, 5 Feb 2025 10:35:08 -0500
+Subject: [PATCH 44/44] Require libdnf >= 0.74.0 with `persistence` option
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: 5a4f6c42e61ed764ff85eea69125947a280d665d
+
+This backport actually uses RHEL-9 libdnf version.
+
+Resolves: https://issues.redhat.com/browse/RHEL-70917
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf.spec | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/dnf.spec b/dnf.spec
+index b60f2692b..313a3cb2a 100644
+--- a/dnf.spec
++++ b/dnf.spec
+@@ -2,7 +2,7 @@
+ %define __cmake_in_source_build 1
+ 
+ # default dependencies
+-%global hawkey_version 0.66.0
++%global hawkey_version 0.74.0
+ %global libcomps_version 0.1.8
+ %global libmodulemd_version 2.9.3
+ %global rpm_version 4.14.0
+@@ -21,6 +21,10 @@
+     %global rpm_version 4.11.3-25.el7.centos.1
+ %endif
+ 
++%if 0%{?rhel} == 9
++    %global hawkey_version 0.69.0-13
++%endif
++
+ # override dependencies for fedora 26
+ %if 0%{?fedora} == 26
+     %global rpm_version 4.13.0.1-7
+-- 
+2.48.1
+

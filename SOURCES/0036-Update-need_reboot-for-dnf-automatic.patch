@@ -1,0 +1,29 @@
+From ed14b8c8425c6fb6dbade3028ac0118086052b1b Mon Sep 17 00:00:00 2001
+From: Klaas Demter <Klaas-@users.noreply.github.com>
+Date: Tue, 15 Oct 2024 11:58:15 +0200
+Subject: [PATCH] Update need_reboot for dnf-automatic
+
+The need_reboot from dnf-automatic did not match NEED_REBOOT from
+needs-restarting.
+---
+ dnf/base.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/dnf/base.py b/dnf/base.py
+index 13222407..168207b5 100644
+--- a/dnf/base.py
++++ b/dnf/base.py
+@@ -2832,8 +2832,8 @@ class Base(object):
+ 
+         # List taken from DNF needs-restarting
+         need_reboot = frozenset(('kernel', 'kernel-rt', 'glibc',
+-                                'linux-firmware', 'systemd', 'dbus',
+-                                'dbus-broker', 'dbus-daemon'))
++                                 'linux-firmware', 'systemd', 'dbus',
++                                 'dbus-broker', 'dbus-daemon', 'microcode_ctl'))
+         changed_pkgs = self.transaction.install_set | self.transaction.remove_set
+         return any(pkg.name in need_reboot for pkg in changed_pkgs)
+ 
+-- 
+2.47.1
+

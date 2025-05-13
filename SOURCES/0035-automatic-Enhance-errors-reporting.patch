@@ -1,0 +1,60 @@
+From 2a1046f4dbf855902056e463a9d35612e93f786e Mon Sep 17 00:00:00 2001
+From: Marek Blaha <mblaha@redhat.com>
+Date: Mon, 9 Dec 2024 13:42:44 +0100
+Subject: [PATCH] automatic: Enhance errors reporting
+
+Emitters must be initialized early to ensure they can report errors that
+might occur in earlier stages of execution, before transaction
+resolution. Also a broader range of exceptions must be caught to
+ensure they are communicated to the user through the configured
+emitters.
+For example "No space left on the device" error can be raised during the
+fill_sack() call. This patch should report it via configured emitters.
+
+Resolves: https://issues.redhat.com/browse/RHEL-61882
+---
+ dnf/automatic/main.py | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/dnf/automatic/main.py b/dnf/automatic/main.py
+index 0a9d5041..5ca4ad39 100644
+--- a/dnf/automatic/main.py
++++ b/dnf/automatic/main.py
+@@ -311,11 +311,13 @@ def wait_for_network(repos, timeout):
+ 
+ def main(args):
+     (opts, parser) = parse_arguments(args)
++    conf = None
++    emitters = None
+ 
+     try:
+         conf = AutomaticConfig(opts.conf_path, opts.downloadupdates,
+                                opts.installupdates)
+-        emitters = None
++        emitters = build_emitters(conf)
+         with dnf.Base() as base:
+             cli = dnf.cli.Cli(base)
+             cli._read_conf_file()
+@@ -349,7 +351,6 @@ def main(args):
+                 return 0
+ 
+             lst = output.list_transaction(trans, total_width=80)
+-            emitters = build_emitters(conf)
+             emitters.notify_available(lst)
+             if not conf.commands.download_updates:
+                 emitters.commit()
+@@ -378,9 +379,9 @@ def main(args):
+                 exit_code = os.waitstatus_to_exitcode(os.system(conf.commands.reboot_command))
+                 if exit_code != 0:
+                     raise dnf.exceptions.Error('reboot command returned nonzero exit code: %d', exit_code)
+-    except dnf.exceptions.Error as exc:
++    except Exception as exc:
+         logger.error(_('Error: %s'), ucd(exc))
+-        if conf.emitters.send_error_messages and emitters != None:
++        if conf is not None and conf.emitters.send_error_messages and emitters is not None:
+             emitters.notify_error(_('Error: %s') % str(exc))
+             emitters.commit()
+         return 1
+-- 
+2.47.1
+

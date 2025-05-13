@@ -1,0 +1,81 @@
+From d8bd8174426a2d053b20acc7c2bcd83a572fc1d5 Mon Sep 17 00:00:00 2001
+From: Marek Blaha <mblaha@redhat.com>
+Date: Thu, 17 Oct 2024 13:30:21 +0200
+Subject: [PATCH] automatic: Check availability of config file
+
+Upstream commit: 13ecc3921fb1566c2af7b80d5cb515d8fc4e5ec9
+RHEL issue: https://issues.redhat.com/browse/RHEL-49743
+
+If a configuration file is explicitly specified on the command line,
+ensure that it exists and is readable. If the file is not found, notify
+the user immediately and terminate the process.
+
+This resolves issues where users may run dnf-automatic with unrecognized
+positional arguments, such as `dnf-automatic install`.
+
+The most natural approach to handle a non-existing config file would be
+by catching the exception thrown by the `read()` method of the
+`libdnf.conf.ConfigParser` class. Unfortunately, the Python bindings
+override the `read()` method at the SWIG level, causing it to suppress any
+potentially raised IOError.
+For details see this section of the commit
+https://github.com/rpm-software-management/libdnf/commit/8f1fedf8551b72d6bc24018f5980714b3a103aeb
+
+def ConfigParser__newRead(self, filenames):
+    parsedFNames = []
+    try:
+        if isinstance(filenames, str) or isinstance(filenames, unicode):
+            filenames = [filenames]
+    except NameError:
+        pass
+    for fname in filenames:
+        try:
+            self.readFileName(fname)
+            parsedFNames.append(fname)
+        except IOError:
+            pass
+        except Exception as e:
+            raise RuntimeError("Parsing file '%s' failed: %s" % (fname, str(e)))
+    return parsedFNames
+ConfigParser.read = ConfigParser__newRead
+
+Resolves: https://issues.redhat.com/browse/RHEL-46030
+---
+ dnf/automatic/main.py | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/dnf/automatic/main.py b/dnf/automatic/main.py
+index caef627f..bb0bd493 100644
+--- a/dnf/automatic/main.py
++++ b/dnf/automatic/main.py
+@@ -74,7 +74,7 @@ def build_emitters(conf):
+ 
+ def parse_arguments(args):
+     parser = argparse.ArgumentParser()
+-    parser.add_argument('conf_path', nargs='?', default=dnf.const.CONF_AUTOMATIC_FILENAME)
++    parser.add_argument('conf_path', nargs='?')
+     parser.add_argument('--timer', action='store_true')
+     parser.add_argument('--installupdates', dest='installupdates', action='store_true')
+     parser.add_argument('--downloadupdates', dest='downloadupdates', action='store_true')
+@@ -89,7 +89,17 @@ def parse_arguments(args):
+ class AutomaticConfig(object):
+     def __init__(self, filename=None, downloadupdates=None,
+                  installupdates=None):
+-        if not filename:
++        if filename:
++            # Specific config file was explicitely requested. Check that it exists
++            # and is readable.
++            if os.access(filename, os.F_OK):
++                if not os.access(filename, os.R_OK):
++                    raise dnf.exceptions.Error(
++                        "Configuration file \"{}\" is not readable.".format(filename))
++            else:
++                raise dnf.exceptions.Error(
++                    "Configuration file \"{}\" not found.".format(filename))
++        else:
+             filename = dnf.const.CONF_AUTOMATIC_FILENAME
+         self.commands = CommandsConfig()
+         self.email = EmailConfig()
+-- 
+2.47.0
+

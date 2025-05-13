@@ -1,0 +1,247 @@
+From 130e44556d49cf9fa4a0468bb73b56182691ab86 Mon Sep 17 00:00:00 2001
+From: derickdiaz <derickdiaz123@outlook.com>
+Date: Sun, 15 Oct 2023 10:58:03 -0500
+Subject: [PATCH 1/4] Added feature to allow emitters to invoke on dnf error
+
+---
+ AUTHORS                  |  1 +
+ dnf/automatic/emitter.py | 22 ++++++++++++++++++----
+ dnf/automatic/main.py    |  5 +++++
+ 3 files changed, 24 insertions(+), 4 deletions(-)
+
+diff --git a/AUTHORS b/AUTHORS
+index 699a92c4..2e16c8ae 100644
+--- a/AUTHORS
++++ b/AUTHORS
+@@ -68,6 +68,7 @@ DNF CONTRIBUTORS
+     Christopher Meng <cickumqt@gmail.com>
+     Daniel Mach <dmach@redhat.com>
+     Dave Johansen <davejohansen@gmail.com>
++    Derick Diaz <derickdiaz123@outlook.com>
+     Dylan Pindur <dylanpindur@gmail.com>
+     Eduard Cuba <ecuba@redhat.com>
+     Evan Goode <egoode@redhat.com>
+diff --git a/dnf/automatic/emitter.py b/dnf/automatic/emitter.py
+index 648f1a1d..673da082 100644
+--- a/dnf/automatic/emitter.py
++++ b/dnf/automatic/emitter.py
+@@ -33,6 +33,7 @@ APPLIED = _("The following updates have been applied on '%s':")
+ APPLIED_TIMESTAMP = _("Updates completed at %s")
+ AVAILABLE = _("The following updates are available on '%s':")
+ DOWNLOADED = _("The following updates were downloaded on '%s':")
++ERROR = _("An error has occured on: '%s'")
+ 
+ logger = logging.getLogger('dnf')
+ 
+@@ -44,10 +45,15 @@ class Emitter(object):
+         self._downloaded = False
+         self._system_name = system_name
+         self._trans_msg = None
++        self._error = False
++        self._error_msg = None
+ 
+     def _prepare_msg(self):
+         msg = []
+-        if self._applied:
++        if self._error:
++            msg.append(ERROR % self._system_name)
++            msg.append(self._error_msg)
++        elif self._applied:
+             msg.append(APPLIED % self._system_name)
+             msg.append(self._available_msg)
+             msg.append(APPLIED_TIMESTAMP % time.strftime("%c"))
+@@ -72,6 +78,10 @@ class Emitter(object):
+         assert self._available_msg
+         self._downloaded = True
+ 
++    def notify_error(self, msg):
++        self._error = True
++        self._error_msg = msg
++
+ 
+ class EmailEmitter(Emitter):
+     def __init__(self, system_name, conf):
+@@ -79,7 +89,9 @@ class EmailEmitter(Emitter):
+         self._conf = conf
+ 
+     def _prepare_msg(self):
+-        if self._applied:
++        if self._error:
++            subj = _("An error has occured on '%s'.") % self._system_name
++        elif self._applied:
+             subj = _("Updates applied on '%s'.") % self._system_name
+         elif self._downloaded:
+             subj = _("Updates downloaded on '%s'.") % self._system_name
+@@ -95,6 +107,8 @@ class EmailEmitter(Emitter):
+         message.set_charset('utf-8')
+         email_from = self._conf.email_from
+         email_to = self._conf.email_to
++        email_host = self._conf.email_host
++        email_port = self._conf.email_port
+         message['Date'] = email.utils.formatdate()
+         message['From'] = email_from
+         message['Subject'] = subj
+@@ -103,12 +117,12 @@ class EmailEmitter(Emitter):
+ 
+         # Send the email
+         try:
+-            smtp = smtplib.SMTP(self._conf.email_host, timeout=300)
++            smtp = smtplib.SMTP(email_host, email_port, timeout=300)
+             smtp.sendmail(email_from, email_to, message.as_string())
+             smtp.close()
+         except OSError as exc:
+             msg = _("Failed to send an email via '%s': %s") % (
+-                self._conf.email_host, exc)
++                email_host, exc)
+             logger.error(msg)
+ 
+ 
+diff --git a/dnf/automatic/main.py b/dnf/automatic/main.py
+index bb0bd493..8aca210a 100644
+--- a/dnf/automatic/main.py
++++ b/dnf/automatic/main.py
+@@ -314,6 +314,7 @@ def main(args):
+     try:
+         conf = AutomaticConfig(opts.conf_path, opts.downloadupdates,
+                                opts.installupdates)
++        emitters = None
+         with dnf.Base() as base:
+             cli = dnf.cli.Cli(base)
+             cli._read_conf_file()
+@@ -376,9 +377,13 @@ def main(args):
+                 exit_code = os.waitstatus_to_exitcode(os.system(conf.commands.reboot_command))
+                 if exit_code != 0:
+                     logger.error('Error: reboot command returned nonzero exit code: %d', exit_code)
++                    emitters.notify_error('Error: reboot command returned nonzero exit code: %d', exit_code)
++                    emitters.commit()
+                     return 1
+     except dnf.exceptions.Error as exc:
+         logger.error(_('Error: %s'), ucd(exc))
++        emitters.notify_error(_('Error: %s') % str(exc))
++        emitters.commit()
+         return 1
+     return 0
+ 
+-- 
+2.47.1
+
+
+From 1d18e7c6c03d6de084a6845db3a2dc50f02c8e4c Mon Sep 17 00:00:00 2001
+From: derickdiaz <derickdiaz123@outlook.com>
+Date: Thu, 19 Oct 2023 04:58:45 -0500
+Subject: [PATCH 2/4] Checks if emitter is null incase build_emitters throws a
+ ConfigError
+
+---
+ dnf/automatic/main.py | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/dnf/automatic/main.py b/dnf/automatic/main.py
+index 8aca210a..04926346 100644
+--- a/dnf/automatic/main.py
++++ b/dnf/automatic/main.py
+@@ -382,8 +382,9 @@ def main(args):
+                     return 1
+     except dnf.exceptions.Error as exc:
+         logger.error(_('Error: %s'), ucd(exc))
+-        emitters.notify_error(_('Error: %s') % str(exc))
+-        emitters.commit()
++        if conf.emitters != None:
++            emitters.notify_error(_('Error: %s') % str(exc))
++            emitters.commit()
+         return 1
+     return 0
+ 
+-- 
+2.47.1
+
+
+From 3e45752f0b74d2c4297da429a57b3e5148374195 Mon Sep 17 00:00:00 2001
+From: derickdiaz <derickdiaz123@outlook.com>
+Date: Thu, 19 Oct 2023 05:21:23 -0500
+Subject: [PATCH 3/4] Added 'send_error_messages' Boolean Option and updated
+ man docs
+
+Added option 'send_error_messages'
+
+Fixed Option String List
+
+Changed option to Boolean
+---
+ dnf/automatic/main.py | 8 +++-----
+ doc/automatic.rst     | 5 +++++
+ 2 files changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/dnf/automatic/main.py b/dnf/automatic/main.py
+index 04926346..0a9d5041 100644
+--- a/dnf/automatic/main.py
++++ b/dnf/automatic/main.py
+@@ -239,6 +239,7 @@ class EmittersConfig(Config):
+             libdnf.conf.VectorString(['email', 'stdio'])))
+         self.add_option('output_width', libdnf.conf.OptionNumberInt32(80))
+         self.add_option('system_name', libdnf.conf.OptionString(socket.gethostname()))
++        self.add_option('send_error_messages', libdnf.conf.OptionBool(False))
+ 
+ 
+ def gpgsigcheck(base, pkgs):
+@@ -376,13 +377,10 @@ def main(args):
+                (conf.commands.reboot == 'when-needed' and base.reboot_needed())):
+                 exit_code = os.waitstatus_to_exitcode(os.system(conf.commands.reboot_command))
+                 if exit_code != 0:
+-                    logger.error('Error: reboot command returned nonzero exit code: %d', exit_code)
+-                    emitters.notify_error('Error: reboot command returned nonzero exit code: %d', exit_code)
+-                    emitters.commit()
+-                    return 1
++                    raise dnf.exceptions.Error('reboot command returned nonzero exit code: %d', exit_code)
+     except dnf.exceptions.Error as exc:
+         logger.error(_('Error: %s'), ucd(exc))
+-        if conf.emitters != None:
++        if conf.emitters.send_error_messages and emitters != None:
+             emitters.notify_error(_('Error: %s') % str(exc))
+             emitters.commit()
+         return 1
+diff --git a/doc/automatic.rst b/doc/automatic.rst
+index 329c2f46..2d514b78 100644
+--- a/doc/automatic.rst
++++ b/doc/automatic.rst
+@@ -120,6 +120,11 @@ Choosing how the results should be reported.
+ 
+     How the system is called in the reports.
+ 
++``send_error_messages``
++    boolean, default: False
++
++    Invokes emitters when an errors occurs
++
+ ---------------------
+ ``[command]`` section
+ ---------------------
+-- 
+2.47.1
+
+
+From 33d52a8072c47b74603cf38ec807c26657799578 Mon Sep 17 00:00:00 2001
+From: derickdiaz <derickdiaz123@outlook.com>
+Date: Fri, 27 Oct 2023 12:00:21 -0500
+Subject: [PATCH 4/4] Fixed Typo in docs
+
+---
+ doc/automatic.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/doc/automatic.rst b/doc/automatic.rst
+index 2d514b78..4f8eec68 100644
+--- a/doc/automatic.rst
++++ b/doc/automatic.rst
+@@ -123,7 +123,7 @@ Choosing how the results should be reported.
+ ``send_error_messages``
+     boolean, default: False
+ 
+-    Invokes emitters when an errors occurs
++    Invokes emitters when an error occurs.
+ 
+ ---------------------
+ ``[command]`` section
+-- 
+2.47.1
+

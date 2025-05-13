@@ -1,0 +1,74 @@
+From ec5cbd19adc6f384923e95d42357f23696b3c950 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Tue, 17 Dec 2024 18:58:32 +0000
+Subject: [PATCH 40/44] bootc: Document `--transient` and `persistence`
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: 80a62d89ba3c00f4e0bd3fea995d04ccf9ba8098
+
+Documents the new `--transient` command-line argument and `persistence`
+configuration option. I tried to use a table for listing the valid
+options for `persistence`, but RST does not automatically wrap table
+cells containing long lines, so a list was much easier.
+
+Resolves: https://issues.redhat.com/browse/RHEL-70917
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ doc/command_ref.rst |  9 +++++++++
+ doc/conf_ref.rst    | 11 +++++++++++
+ 2 files changed, 20 insertions(+)
+
+diff --git a/doc/command_ref.rst b/doc/command_ref.rst
+index 75ded68cd..8b55d5a76 100644
+--- a/doc/command_ref.rst
++++ b/doc/command_ref.rst
+@@ -389,6 +389,11 @@ Options
+ ``--showduplicates``
+     Show duplicate packages in repositories. Applicable for the list and search commands.
+ 
++.. _transient_option-label:
++
++``--transient``
++    Applicable only on bootc (bootable containers) systems. Perform transactions using a transient overlay which will be lost on the next reboot. See also the :ref:`persistence <persistence-label>` configuration option.
++
+ .. _verbose_options-label:
+ 
+ ``-v, --verbose``
+@@ -708,6 +713,10 @@ transactions and act according to this information (assuming the
+     which specifies a transaction by a package which it manipulated. When no
+     transaction is specified, list all known transactions.
+ 
++    Note that transient transactions (see :ref:`--transient
++    <transient_option-label>`) will be listed even though they do not make
++    persistent changes to files under ``/usr`` or to the RPM database.
++
+     The "Action(s)" column lists each type of action taken in the transaction. The possible values are:
+ 
+     * Install (I): a new package was installed on the system
+diff --git a/doc/conf_ref.rst b/doc/conf_ref.rst
+index 42a9a37e5..a34e355b6 100644
+--- a/doc/conf_ref.rst
++++ b/doc/conf_ref.rst
+@@ -430,6 +430,17 @@ configuration file by your distribution to override the DNF defaults.
+ 
+     Directory where DNF stores its persistent data between runs. Default is ``"/var/lib/dnf"``.
+ 
++.. _persistence-label:
++
++``persistence``
++    :ref:`string <string-label>`
++
++    Whether changes should persist across system reboots. Default is ``auto``. Passing :ref:`--transient <transient_option-label>` will override this setting to ``transient``. Valid values are:
++
++    * ``auto``: Changes will persist across reboots, unless the target is a running bootc system and the system is already in an unlocked state (i.e. ``/usr`` is writable).
++    * ``transient``: Changes will be lost on the next reboot. Only applicable on bootc systems. Beware that changes to ``/etc`` and ``/var`` will persist, depending on the configuration of your bootc system. See also https://containers.github.io/bootc/man/bootc-usr-overlay.html.
++    * ``persist``: Changes will persist across reboots.
++
+ .. _pluginconfpath-label:
+ 
+ ``pluginconfpath``
+-- 
+2.48.1
+
