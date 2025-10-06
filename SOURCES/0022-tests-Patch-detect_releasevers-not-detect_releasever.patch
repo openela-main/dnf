@@ -1,0 +1,129 @@
+From 71fda4446391fc17e121d4c8c5eea70c981a2f0f Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Mon, 27 Jan 2025 19:20:14 +0000
+Subject: [PATCH] tests: Patch detect_releasevers, not detect_releasever
+
+Upstream commit: ba5ddbddf1ffb983fe9dc1a329e22eacd2ef35f7
+---
+ tests/api/test_dnf_rpm.py        |  4 ++++
+ tests/cli/commands/test_clean.py |  2 +-
+ tests/support.py                 |  2 +-
+ tests/test_base.py               |  4 ++--
+ tests/test_cli.py                | 10 +++++-----
+ 5 files changed, 13 insertions(+), 9 deletions(-)
+
+diff --git a/tests/api/test_dnf_rpm.py b/tests/api/test_dnf_rpm.py
+index e6d8de84..fb606ffc 100644
+--- a/tests/api/test_dnf_rpm.py
++++ b/tests/api/test_dnf_rpm.py
+@@ -14,6 +14,10 @@ class DnfRpmApiTest(TestCase):
+         # dnf.rpm.detect_releasever
+         self.assertHasAttr(dnf.rpm, "detect_releasever")
+ 
++    def test_detect_releasevers(self):
++        # dnf.rpm.detect_releasevers
++        self.assertHasAttr(dnf.rpm, "detect_releasevers")
++
+     def test_basearch(self):
+         # dnf.rpm.basearch
+         self.assertHasAttr(dnf.rpm, "basearch")
+diff --git a/tests/cli/commands/test_clean.py b/tests/cli/commands/test_clean.py
+index cc0a5df3..c77cb3ef 100644
+--- a/tests/cli/commands/test_clean.py
++++ b/tests/cli/commands/test_clean.py
+@@ -31,7 +31,7 @@ from tests.support import mock
+ '''
+ def _run(cli, args):
+     with mock.patch('sys.stdout', new_callable=StringIO), \
+-            mock.patch('dnf.rpm.detect_releasever', return_value=69):
++            mock.patch('dnf.rpm.detect_releasevers', return_value=(69, None, None)):
+         cli.configure(['clean', '--config', '/dev/null'] + args)
+         cli.run()
+ 
+diff --git a/tests/support.py b/tests/support.py
+index e50684ef..d03683ed 100644
+--- a/tests/support.py
++++ b/tests/support.py
+@@ -177,7 +177,7 @@ def command_run(cmd, args):
+ 
+ class Base(dnf.Base):
+     def __init__(self, *args, **kwargs):
+-        with mock.patch('dnf.rpm.detect_releasever', return_value=69):
++        with mock.patch('dnf.rpm.detect_releasevers', return_value=(69, None, None)):
+             super(Base, self).__init__(*args, **kwargs)
+ 
+ # mock objects
+diff --git a/tests/test_base.py b/tests/test_base.py
+index ad3ef675..9e0a656d 100644
+--- a/tests/test_base.py
++++ b/tests/test_base.py
+@@ -57,7 +57,7 @@ class BaseTest(tests.support.TestCase):
+         self.assertIsNotNone(base)
+         base.close()
+ 
+-    @mock.patch('dnf.rpm.detect_releasever', lambda x: 'x')
++    @mock.patch('dnf.rpm.detect_releasevers', lambda x: ('x', None, None))
+     @mock.patch('dnf.util.am_i_root', lambda: True)
+     def test_default_config_root(self):
+         base = dnf.Base()
+@@ -67,7 +67,7 @@ class BaseTest(tests.support.TestCase):
+         self.assertIsNotNone(reg.match(base.conf.cachedir))
+         base.close()
+ 
+-    @mock.patch('dnf.rpm.detect_releasever', lambda x: 'x')
++    @mock.patch('dnf.rpm.detect_releasevers', lambda x: ('x', None, None))
+     @mock.patch('dnf.util.am_i_root', lambda: False)
+     def test_default_config_user(self):
+         base = dnf.Base()
+diff --git a/tests/test_cli.py b/tests/test_cli.py
+index 9c130c36..573d4ae2 100644
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -191,7 +191,7 @@ class ConfigureTest(tests.support.DnfBaseTestCase):
+         # call setUp() once again *after* am_i_root() is mocked so the cachedir is set as expected
+         self.setUp()
+         self.base._conf.installroot = self._installroot
+-        with mock.patch('dnf.rpm.detect_releasever', return_value=69):
++        with mock.patch('dnf.rpm.detect_releasevers', return_value=(69, None, None)):
+             self.cli.configure(['update', '-c', self.conffile])
+         reg = re.compile('^' + self._installroot + '/var/tmp/dnf-[.a-zA-Z0-9_-]+$')
+         self.assertIsNotNone(reg.match(self.base.conf.cachedir))
+@@ -203,7 +203,7 @@ class ConfigureTest(tests.support.DnfBaseTestCase):
+     def test_configure_root(self):
+         """ Test Cli.configure as root."""
+         self.base._conf = dnf.conf.Conf()
+-        with mock.patch('dnf.rpm.detect_releasever', return_value=69):
++        with mock.patch('dnf.rpm.detect_releasevers', return_value=(69, None, None)):
+             self.cli.configure(['update', '--nogpgcheck', '-c', self.conffile])
+         reg = re.compile('^/var/cache/dnf$')
+         self.assertIsNotNone(reg.match(self.base.conf.system_cachedir))
+@@ -213,7 +213,7 @@ class ConfigureTest(tests.support.DnfBaseTestCase):
+ 
+     def test_configure_verbose(self):
+         self.base._conf.installroot = self._installroot
+-        with mock.patch('dnf.rpm.detect_releasever', return_value=69):
++        with mock.patch('dnf.rpm.detect_releasevers', return_value=(69, None, None)):
+             self.cli.configure(['-v', 'update', '-c', self.conffile])
+         parser = argparse.ArgumentParser()
+         expected = "%s -v update -c %s " % (parser.prog, self.conffile)
+@@ -225,7 +225,7 @@ class ConfigureTest(tests.support.DnfBaseTestCase):
+     @mock.patch('os.path.exists', return_value=True)
+     def test_conf_exists_in_installroot(self, ospathexists):
+         with mock.patch('logging.Logger.warning'), \
+-                mock.patch('dnf.rpm.detect_releasever', return_value=69):
++                mock.patch('dnf.rpm.detect_releasevers', return_value=(69, None, None)):
+             self.cli.configure(['--installroot', '/roots/dnf', 'update'])
+         self.assertEqual(self.base.conf.config_file_path, '/roots/dnf/etc/dnf/dnf.conf')
+         self.assertEqual(self.base.conf.installroot, '/roots/dnf')
+@@ -233,7 +233,7 @@ class ConfigureTest(tests.support.DnfBaseTestCase):
+     @mock.patch('dnf.cli.cli.Cli._parse_commands', new=mock.MagicMock)
+     @mock.patch('os.path.exists', return_value=False)
+     def test_conf_notexists_in_installroot(self, ospathexists):
+-        with mock.patch('dnf.rpm.detect_releasever', return_value=69):
++        with mock.patch('dnf.rpm.detect_releasevers', return_value=(69, None, None)):
+             self.cli.configure(['--installroot', '/roots/dnf', 'update'])
+         self.assertEqual(self.base.conf.config_file_path, '/etc/dnf/dnf.conf')
+         self.assertEqual(self.base.conf.installroot, '/roots/dnf')
+-- 
+2.48.1
+

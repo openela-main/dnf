@@ -1,0 +1,32 @@
+From 15aedf5f4e70695e7801c80498d4da52e49ac626 Mon Sep 17 00:00:00 2001
+From: Joseph Marrero <jmarrero@redhat.com>
+Date: Mon, 22 Jul 2024 15:33:32 -0400
+Subject: [PATCH] Update bootc hosts message to point to bootc --help
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: e2535589ce16bc36b96b37369502a3c312f6056a
+Resolves: https://issues.redhat.com/browse/RHEL-49671
+
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf/cli/cli.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
+index 83b190026..0eda2c8cb 100644
+--- a/dnf/cli/cli.py
++++ b/dnf/cli/cli.py
+@@ -217,7 +217,7 @@ class BaseCli(dnf.Base):
+             if dnf.util._is_bootc_host():
+                 _bootc_host_msg = _("""
+ *** Error: system is configured to be read-only; for more
+-*** information run `bootc status` or `ostree admin status`.
++*** information run `bootc --help`.
+ """)
+                 logger.info(_bootc_host_msg)
+                 raise CliError(_("Operation aborted."))
+-- 
+2.46.2
+

@@ -1,0 +1,179 @@
+From 66fb0b5ec8ea3d3165e6b2f38e1a01f692d1ec93 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Tue, 21 Jan 2025 19:16:13 +0000
+Subject: [PATCH] Override releasever_{major,minor} with provides
+
+Upstream commit: 75e3ff0c43a5d605aa43d6ddc2d9e2ef89942999
+
+The releasever_major and releasever_minor substitution variables are
+usually derived by splitting releasever on the first `.`. However, to
+support EPEL 10 [1], we would like a way for distributions to override these
+values. Specifically, we would like RHEL 10 to have a releasever of `10`
+with a releasever_major of `10` and a releasever_minor of `0` (later
+incrementing to `1`, `2`, to correspond with the RHEL minor version).
+
+This commit adds a new API function, `detect_releasevers`, which derives
+releasever, releasever_major, and releasever_minor from virtual provides
+on the system-release package (any of `DISTROVERPKG`). The detection of
+releasever is unchanged. releasever_major and releasever_minor are
+specified by the versions of the `system-release-major` and
+`system-release-minor` provides, respectively.
+
+If the user specifies a `--releasever=X.Y` on the command line, the
+distribution settings for releasever, releasever_major, and releasever_minor
+will all be overridden: releasever will be set to X.Y, releasever_major will be
+set to X, and releasever_minor will be set to Y, same as before.  If a user
+wants to specify a custom releasever_major and releasever_minor, they have to
+set all three with `--setopt=releasever=X --setopt=releasever_major=Y
+--setopt=releasever_minor=z`, taking care to put `releasever_major` and
+`releasever_minor` after `releasever` so they are not overridden.
+
+[1] https://issues.redhat.com/browse/RHEL-68034
+---
+ dnf/base.py         | 10 ++++++++--
+ dnf/cli/cli.py      | 11 +++++++++--
+ dnf/const.py.in     |  2 ++
+ dnf/rpm/__init__.py | 43 +++++++++++++++++++++++++++++++++++++++----
+ 4 files changed, 58 insertions(+), 8 deletions(-)
+
+diff --git a/dnf/base.py b/dnf/base.py
+index dac3cefd..c4a4f854 100644
+--- a/dnf/base.py
++++ b/dnf/base.py
+@@ -157,8 +157,14 @@ class Base(object):
+         conf = dnf.conf.Conf()
+         subst = conf.substitutions
+         if 'releasever' not in subst:
+-            subst['releasever'] = \
+-                dnf.rpm.detect_releasever(conf.installroot)
++            releasever, major, minor = \
++                dnf.rpm.detect_releasevers(conf.installroot)
++            subst['releasever'] = releasever
++            if major is not None:
++                subst['releasever_major'] = major
++            if minor is not None:
++                subst['releasever_minor'] = minor
++
+         return conf
+ 
+     def _setup_modular_excludes(self):
+diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
+index e2700c09..118ce4e7 100644
+--- a/dnf/cli/cli.py
++++ b/dnf/cli/cli.py
+@@ -971,13 +971,20 @@ class Cli(object):
+             from_root = "/"
+         subst = conf.substitutions
+         subst.update_from_etc(from_root, varsdir=conf._get_value('varsdir'))
++
+         # cachedir, logs, releasever, and gpgkey are taken from or stored in installroot
++        major = None
++        minor = None
+         if releasever is None and conf.releasever is None:
+-            releasever = dnf.rpm.detect_releasever(conf.installroot)
++            releasever, major, minor = dnf.rpm.detect_releasevers(conf.installroot)
+         elif releasever == '/':
+-            releasever = dnf.rpm.detect_releasever(releasever)
++            releasever, major, minor = dnf.rpm.detect_releasevers(releasever)
+         if releasever is not None:
+             conf.releasever = releasever
++            if major is not None:
++                conf.releasever_major = major
++            if minor is not None:
++                conf.releasever_minor = minor
+         if conf.releasever is None:
+             logger.warning(_("Unable to detect release version (use '--releasever' to specify "
+                              "release version)"))
+diff --git a/dnf/const.py.in b/dnf/const.py.in
+index bcadc804..07aab7a4 100644
+--- a/dnf/const.py.in
++++ b/dnf/const.py.in
+@@ -25,6 +25,8 @@ CONF_AUTOMATIC_FILENAME='/etc/dnf/automatic.conf'
+ DISTROVERPKG=('system-release(releasever)', 'system-release',
+               'distribution-release(releasever)', 'distribution-release',
+               'redhat-release', 'suse-release')
++DISTROVER_MAJOR_PKG='system-release(releasever_major)'
++DISTROVER_MINOR_PKG='system-release(releasever_minor)'
+ GROUP_PACKAGE_TYPES = ('mandatory', 'default', 'conditional') # :api
+ INSTALLONLYPKGS=['kernel', 'kernel-PAE',
+                  'installonlypkg(kernel)',
+diff --git a/dnf/rpm/__init__.py b/dnf/rpm/__init__.py
+index 12efca7f..d4be4d03 100644
+--- a/dnf/rpm/__init__.py
++++ b/dnf/rpm/__init__.py
+@@ -26,12 +26,21 @@ import dnf.exceptions
+ import rpm  # used by ansible (dnf.rpm.rpm.labelCompare in lib/ansible/modules/packaging/os/dnf.py)
+ 
+ 
+-def detect_releasever(installroot):
++def detect_releasevers(installroot):
+     # :api
+-    """Calculate the release version for the system."""
++    """Calculate the release version for the system, including releasever_major
++    and releasever_minor if they are overriden by the system-release-major or
++    system-release-minor provides."""
+ 
+     ts = transaction.initReadOnlyTransaction(root=installroot)
+     ts.pushVSFlags(~(rpm._RPMVSF_NOSIGNATURES | rpm._RPMVSF_NODIGESTS))
++
++    distrover_major_pkg = dnf.const.DISTROVER_MAJOR_PKG
++    distrover_minor_pkg = dnf.const.DISTROVER_MINOR_PKG
++    if dnf.pycomp.PY3:
++        distrover_major_pkg = bytes(distrover_major_pkg, 'utf-8')
++        distrover_minor_pkg = bytes(distrover_minor_pkg, 'utf-8')
++
+     for distroverpkg in dnf.const.DISTROVERPKG:
+         if dnf.pycomp.PY3:
+             distroverpkg = bytes(distroverpkg, 'utf-8')
+@@ -47,6 +56,8 @@ def detect_releasever(installroot):
+             msg = 'Error: rpmdb failed to list provides. Try: rpm --rebuilddb'
+             raise dnf.exceptions.Error(msg)
+         releasever = hdr['version']
++        releasever_major = None
++        releasever_minor = None
+         try:
+             try:
+                 # header returns bytes -> look for bytes
+@@ -61,13 +72,37 @@ def detect_releasever(installroot):
+                 if hdr['name'] not in (distroverpkg, distroverpkg.decode("utf8")):
+                     # override the package version
+                     releasever = ver
++
++            for provide, flag, ver in zip(
++                    hdr[rpm.RPMTAG_PROVIDENAME],
++                    hdr[rpm.RPMTAG_PROVIDEFLAGS],
++                    hdr[rpm.RPMTAG_PROVIDEVERSION]):
++                if isinstance(provide, str):
++                    provide = bytes(provide, "utf-8")
++                if provide == distrover_major_pkg and flag == rpm.RPMSENSE_EQUAL and ver:
++                    releasever_major = ver
++                if provide == distrover_minor_pkg and flag == rpm.RPMSENSE_EQUAL and ver:
++                    releasever_minor = ver
++
+         except (ValueError, KeyError, IndexError):
+             pass
+ 
+         if is_py3bytes(releasever):
+             releasever = str(releasever, "utf-8")
+-        return releasever
+-    return None
++        if is_py3bytes(releasever_major):
++            releasever_major = str(releasever_major, "utf-8")
++        if is_py3bytes(releasever_minor):
++            releasever_minor = str(releasever_minor, "utf-8")
++        return releasever, releasever_major, releasever_minor
++    return (None, None, None)
++
++
++def detect_releasever(installroot):
++    # :api
++    """Calculate the release version for the system."""
++
++    releasever, _, _ = detect_releasevers(installroot)
++    return releasever
+ 
+ 
+ def _header(path):
+-- 
+2.48.1
+

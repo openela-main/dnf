@@ -1,0 +1,181 @@
+From 082973b36646945b1c60be8b96ab628d92d99b92 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Thu, 7 Nov 2024 02:31:25 +0000
+Subject: [PATCH 12/17] Add support for --transient
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: 6091f3fccea988208ca417a504569947e4c99263
+
+Adds support for the --transient option on all transactions. Passing
+--transient on a bootc system will call `bootc usr-overlay` to create a
+transient writeable /usr and continue the transaction.
+
+Specifying --transient on a non-bootc system will throw an error; we
+don't want to mislead users to thinking this feature works on non-bootc
+systems.
+
+If --transient is not specified and the bootc system is in a locked
+state, the operation will be aborted and a message will be printed
+suggesting to try again with --transient.
+
+Resolves: https://issues.redhat.com/browse/RHEL-76849
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf/cli/cli.py           | 40 ++++++++++++++++++++++++++++++---------
+ dnf/cli/option_parser.py |  3 +++
+ dnf/conf/config.py       |  2 +-
+ dnf/util.py              | 41 +++++++++++++++++++++++++++++-----------
+ 4 files changed, 65 insertions(+), 21 deletions(-)
+
+diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
+index d3844df34..53f2d9d50 100644
+--- a/dnf/cli/cli.py
++++ b/dnf/cli/cli.py
+@@ -205,28 +205,50 @@ class BaseCli(dnf.Base):
+             else:
+                 self.output.reportDownloadSize(install_pkgs, install_only)
+ 
++        bootc_unlock_requested = False
++
+         if trans or self._moduleContainer.isChanged() or \
+                 (self._history and (self._history.group or self._history.env)):
+             # confirm with user
+             if self.conf.downloadonly:
+                 logger.info(_("{prog} will only download packages for the transaction.").format(
+                     prog=dnf.util.MAIN_PROG_UPPER))
++
+             elif 'test' in self.conf.tsflags:
+                 logger.info(_("{prog} will only download packages, install gpg keys, and check the "
+                               "transaction.").format(prog=dnf.util.MAIN_PROG_UPPER))
+-            if dnf.util._is_bootc_host() and \
+-                    os.path.realpath(self.conf.installroot) == "/" and \
+-                    not self.conf.downloadonly:
+-                _bootc_host_msg = _("""
+-*** Error: system is configured to be read-only; for more
+-*** information run `bootc --help`.
+-""")
+-                logger.info(_bootc_host_msg)
+-                raise CliError(_("Operation aborted."))
++
++            is_bootc_transaction = dnf.util._is_bootc_host() and \
++                os.path.realpath(self.conf.installroot) == "/" and \
++                not self.conf.downloadonly
++
++            # Handle bootc transactions. `--transient` must be specified if
++            # /usr is not already writeable.
++            if is_bootc_transaction:
++                if self.conf.persistence == "persist":
++                    logger.info(_("Persistent transactions aren't supported on bootc systems."))
++                    raise CliError(_("Operation aborted."))
++                assert self.conf.persistence in ("auto", "transient")
++                if not dnf.util._is_bootc_unlocked():
++                    if self.conf.persistence == "auto":
++                        logger.info(_("This bootc system is configured to be read-only. Pass --transient to "
++                                      "perform this and subsequent transactions in a transient overlay which "
++                                      "will reset when the system reboots."))
++                        raise CliError(_("Operation aborted."))
++                    assert self.conf.persistence == "transient"
++                    logger.info(_("A transient overlay will be created on /usr that will be discarded on reboot. "
++                                  "Keep in mind that changes to /etc and /var will still persist, and packages "
++                                  "commonly modify these directories."))
++                    bootc_unlock_requested = True
++            elif self.conf.persistence == "transient":
++                raise CliError(_("Transient transactions are only supported on bootc systems."))
+ 
+             if self._promptWanted():
+                 if self.conf.assumeno or not self.output.userconfirm():
+                     raise CliError(_("Operation aborted."))
++
++            if bootc_unlock_requested:
++                dnf.util._bootc_unlock()
+         else:
+             logger.info(_('Nothing to do.'))
+             return
+diff --git a/dnf/cli/option_parser.py b/dnf/cli/option_parser.py
+index 042d5fbbe..ec4696fd2 100644
+--- a/dnf/cli/option_parser.py
++++ b/dnf/cli/option_parser.py
+@@ -317,6 +317,9 @@ class OptionParser(argparse.ArgumentParser):
+         general_grp.add_argument("--downloadonly", dest="downloadonly",
+                                  action="store_true", default=False,
+                                  help=_("only download packages"))
++        general_grp.add_argument("--transient", dest="persistence",
++                                 action="store_const", const="transient", default=None,
++                                 help=_("Use a transient overlay which will reset on reboot"))
+         general_grp.add_argument("--comment", dest="comment", default=None,
+                                  help=_("add a comment to transaction"))
+         # Updateinfo options...
+diff --git a/dnf/conf/config.py b/dnf/conf/config.py
+index f9c8d932a..5210ffba2 100644
+--- a/dnf/conf/config.py
++++ b/dnf/conf/config.py
+@@ -343,7 +343,7 @@ class MainConf(BaseConfig):
+                        'best', 'assumeyes', 'assumeno', 'clean_requirements_on_remove', 'gpgcheck',
+                        'showdupesfromrepos', 'plugins', 'ip_resolve',
+                        'rpmverbosity', 'disable_excludes', 'color',
+-                       'downloadonly', 'exclude', 'excludepkgs', 'skip_broken',
++                       'downloadonly', 'persistence', 'exclude', 'excludepkgs', 'skip_broken',
+                        'tsflags', 'arch', 'basearch', 'ignorearch', 'cacheonly', 'comment']
+ 
+         for name in config_args:
+diff --git a/dnf/util.py b/dnf/util.py
+index 1ba2e27ff..2e270890c 100644
+--- a/dnf/util.py
++++ b/dnf/util.py
+@@ -38,6 +38,7 @@ import logging
+ import os
+ import pwd
+ import shutil
++import subprocess
+ import sys
+ import tempfile
+ import time
+@@ -642,14 +643,32 @@ def _is_file_pattern_present(specs):
+ 
+ 
+ def _is_bootc_host():
+-    """Returns true is the system is managed as an immutable container,
+-       false otherwise.  If msg is True, a warning message is displayed
+-       for the user.
+-    """
+-    ostree_booted = '/run/ostree-booted'
+-    usr = '/usr/'
+-    # Check if usr is writtable and we are in a running ostree system.
+-    # We want this code to return true only when the system is in locked state. If someone ran
+-    # bootc overlay or ostree admin unlock we would want normal DNF path to be ran as it will be
+-    # temporary changes (until reboot).
+-    return os.path.isfile(ostree_booted) and not os.access(usr, os.W_OK)
++    """Returns true is the system is managed as an immutable container, false
++    otherwise."""
++    ostree_booted = "/run/ostree-booted"
++    return os.path.isfile(ostree_booted)
++
++
++def _is_bootc_unlocked():
++    """Check whether /usr is writeable, e.g. if we are in a normal mutable
++    system or if we are in a bootc after `bootc usr-overlay` or `ostree admin
++    unlock` was run."""
++    usr = "/usr"
++    return os.access(usr, os.W_OK)
++
++
++def _bootc_unlock():
++    """Set up a writeable overlay on bootc systems."""
++
++    if _is_bootc_unlocked():
++        return
++
++    unlock_command = ["bootc", "usr-overlay"]
++
++    try:
++        completed_process = subprocess.run(unlock_command, text=True)
++        completed_process.check_returncode()
++    except FileNotFoundError:
++        raise dnf.exceptions.Error(_("bootc command not found. Is this a bootc system?"))
++    except subprocess.CalledProcessError:
++        raise dnf.exceptions.Error(_("Failed to unlock system: %s", completed_process.stderr))
+-- 
+2.48.1
+

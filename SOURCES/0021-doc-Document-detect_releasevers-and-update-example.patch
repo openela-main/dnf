@@ -1,0 +1,57 @@
+From ce877f038577a0080ca9e8f69a7fe28047e829ad Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Mon, 27 Jan 2025 18:49:11 +0000
+Subject: [PATCH] doc: Document detect_releasevers and update example
+
+Upstream commit: 593ab0c377cdca78895628c9f7a4676ca220215c
+
+Adds dnf.rpm.detect_releasevers to the API docs and mention it is
+now preferred over dnf.rpm.detect_releasever.
+
+Updates examples/install_extension.py to use detect_releasevers and set
+the releasever_major and releasever_minor substitution variables.
+---
+ doc/api_rpm.rst                   | 8 ++++++++
+ doc/examples/install_extension.py | 6 +++++-
+ 2 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/doc/api_rpm.rst b/doc/api_rpm.rst
+index c59ed67d..562be41a 100644
+--- a/doc/api_rpm.rst
++++ b/doc/api_rpm.rst
+@@ -27,6 +27,14 @@
+ 
+   Returns ``None`` if the information can not be determined (perhaps because the tree has no RPMDB).
+ 
++.. function:: detect_releasevers(installroot)
++
++  Returns a tuple of the release name, overridden major release, and overridden minor release of the distribution of the tree rooted at `installroot`. The function uses information from RPMDB found under the tree. The major and minor release versions are usually derived from the release version by splitting it on the first ``.``, but distributions can override the derived major and minor versions. It's preferred to use ``detect_releasevers`` over ``detect_releasever``; if you use the latter, you will not be aware of distribution overrides for the major and minor release versions.
++
++  Returns ``(None, None, None)`` if the information can not be determined (perhaps because the tree has no RPMDB).
++
++  If the distribution does not override the release major version, then the second item of the returned tuple will be ``None``. Likewise, if the release minor version is not overridden, the third return value will be ``None``.
++
+ .. function:: basearch(arch)
+ 
+   Return base architecture of the processor based on `arch` type given. E.g. when `arch` i686 is given then the returned value will be i386.
+diff --git a/doc/examples/install_extension.py b/doc/examples/install_extension.py
+index dbd3b890..b1540e12 100644
+--- a/doc/examples/install_extension.py
++++ b/doc/examples/install_extension.py
+@@ -32,8 +32,12 @@ if __name__ == '__main__':
+ 
+     with dnf.Base() as base:
+         # Substitutions are needed for correct interpretation of repo files.
+-        RELEASEVER = dnf.rpm.detect_releasever(base.conf.installroot)
++        RELEASEVER, MAJOR, MINOR = dnf.rpm.detect_releasever(base.conf.installroot)
+         base.conf.substitutions['releasever'] = RELEASEVER
++        if MAJOR is not None:
++            base.conf.substitutions['releasever_major'] = MAJOR
++        if MINOR is not None:
++            base.conf.substitutions['releasever_minor'] = MINOR
+         # Repositories are needed if we want to install anything.
+         base.read_all_repos()
+         # A sack is required by marking methods and dependency resolving.
+-- 
+2.48.1
+

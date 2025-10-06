@@ -1,0 +1,162 @@
+From b23e3fbd8747fdf89c2a90d6ffd899fc53378aa3 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Petr=20P=C3=ADsa=C5=99?= <ppisar@redhat.com>
+Date: Tue, 23 Jul 2024 14:56:46 +0200
+Subject: [PATCH] tests: Use PGP keys without SHA-1
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tests failed on RHEL 10 where SHA-1 is disabled in a DEFAULT crypto
+policy and where librepo is configured to use rpm-sequoia which
+respects the crypto policy (in contrast to gpgme):
+
+1: ======================================================================
+1: FAIL: test_rawkey2infos (tests.test_crypto.CryptoTest.test_rawkey2infos)
+1: ----------------------------------------------------------------------
+1: Traceback (most recent call last):
+1:   File "/home/test/rhel/dnf/dnf-4.20.0/tests/test_crypto.py", line 75, in test_rawkey2infos
+1:     self.assertEqual(info.userid, 'Dandy Fied <dnf@example.com>')
+1: AssertionError: '' != 'Dandy Fied <dnf@example.com>'
+1: + Dandy Fied <dnf@example.com>
+
+The root cause was that tests/keys/key.pub used the SHA-1 digest
+algorithm.
+
+This patch replaces that key with a 4096-bit RSA key signed using
+SHA-384 digest algorithm.
+
+Resolves: https://issues.redhat.com/browse/RHEL-50218
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ tests/keys/key.pub   | 75 ++++++++++++++++++++++++++++----------------
+ tests/test_crypto.py | 14 ++++-----
+ 2 files changed, 55 insertions(+), 34 deletions(-)
+
+diff --git a/tests/keys/key.pub b/tests/keys/key.pub
+index 1b4ad15b7..750e51ac1 100644
+--- a/tests/keys/key.pub
++++ b/tests/keys/key.pub
+@@ -1,30 +1,51 @@
+ -----BEGIN PGP PUBLIC KEY BLOCK-----
+-Version: GnuPG v1
+ 
+-mQENBFP0iHYBCADWDO8H+0nIqGgTUisRjjWj9zknXks8PgGIyWydBSjJh84d3lqw
+-Tv+RAxClR2j1YBoyMGT9DxN7NwzneQ6Rj4pIP+Z9LYPA7TFYXiSIws1n0MIXIQWV
+-Z54H4OzrTHp1B+G2Ykjp2e7/JHvhsPGsRkj4a7zZQGK9xscVTKovAg/PSsBiSGDw
+-S2b5kId0UmKRO01FtKPLMRi2Q645d093hHRa3FRv4g99uS3xMZCUUTp3+oV3CEGO
+-J4qnKtl5l09RSubZ1gJRtEaHayYzRYq0AngJCSZwEjfNY/RLpe8Fy2zraTtAl/cB
+-jC0wIX0BCMuGq5/few7f7InFZIC9XA6Vj/NrABEBAAG0HERhbmR5IEZpZWQgPGRu
+-ZkBleGFtcGxlLmNvbT6JATgEEwECACIFAlP0iHYCGwMGCwkIBwMCBhUIAgkKCwQW
+-AgMBAh4BAheAAAoJECQ2KoSSUwyO/GUIAK3cUWelkvcLVbeuWxceE1PtWouA8ovJ
+-0wJPJv8tScwguTqiZ3ZWOzuLar6e76JEAGiuCZcbrMaNRfydBC64+6lgLpSG3CXJ
+-4cXvCD/XkO0DOrWR+TObdoFClgZHwyTpPaBgusVi6pAh8ngphqkVJsn0BRxWQL7u
+-WL1g/kvVnd2zbhSpWpgcTvG7ZGINR+zv9yYwr2/Pi1cos0nB7LZjzXClUELLOI1L
+-bCtiMYGGiGTOr7US9bmY0Ll0e9foZ/dpqMGeFVRX9ax4LMxNYukmu9UzCxX5HKQl
+-os7mZBG1oqvpLMkqcUGn0Na/VxMg+xdPSgiUC/42v3PCvV/fEc3Un7y5AQ0EU/SI
+-dgEIANI9gtGtLM6g6Roacdd9xpI+YXey/Nm13NyYcnSLdZdiLQt2ctgyBq8tujSf
+-uBmFVujkN0xuV9GCMl8LTbdmF64DVoLLZbWGZIGEiyY3+8lSSh5urgxFrmy6HXUL
+-qRpK28aBVP0DuQWgObH/+SJmKXx+c1nfq9zlAIdwTDd/j/IOWnYzFQiJns3hzMmf
+-ptnw7gf5P86L0Bq/LMxPXtI0wlJC3NZNU3zKcw0feAbjN77tI8Yc3hOtaMFFVL+Z
+-r8zzQXiPrBSlBH/i9cC3O18+3K4PW0LEkRfOBKxMaQhWc1K/VRMbErcXAzVGr3WC
+-WXwRW+5gfvhppJbB1guklJk07N0AEQEAAYkBHwQYAQIACQUCU/SIdgIbDAAKCRAk
+-NiqEklMMjjS/B/4+207VxTN/42Xx7ZYIdJYp5cZJn3lqHzYhnUrq126EsFzHuRry
+-izumAcvLur+dpmOHsqtcocL5s80X6VBG/rgdwHS5Zfnx7SLPk/fK+KwM888jhI67
+-616kipZxH0G28+jzRvY5urfCj91b23l4x/upkCpvMQPus520RiQutJBFLgMP4Q8Z
+-hlSi13h8bGGgj1JgOgkql8QD/MGuIEcH/0agqSauedtM7h09+UkO/3m2Zd6q5tpH
+-3qBcnwiUiq848s7AnUuSF4+ORwJf06sZC1QtmBf/NCVB18mfpa5VY+2XXtX9Nzmd
+-HK40HDRIXyBP4BZN6axx1yflGUFGBO+oyGS3
+-=qEyr
++mQINBGafpaEBEADQ/43UehLphv0oCUyoiAOrwnoORINcAexTnWioWoYTe4nwIzcg
++9BMFHhkR6Q+F5IIn4iAEFpVazWeluvfylSiJonYvJtg71Adnmjl1AcZwjC1VO0GX
++YZ1vUbuJU28QYf6EOwf979JQfDrle4hVp6Et3cgE25KN1b+L+1BgilMZjCCwgoDt
++5l+4HhVrO35g8xr0ph38Y5EKbQPFlnOj17INtNfM1o2vkaOXz3QF75nTpevwbsHh
++eh8mno/JZZTeNSOMUX4jmyTN1Fl57EGqzE/OUTNH84H3+b8XrqjabhDVHL1l9YXr
++2tOm80jg5r7DDdNENyMImdTxiyXszktwkCXTofkZlbw3zGHVywx/Ozyjvl3Kg36T
++tly+3a0Z7FMJx71VMHOeA7YmDXHs03DPp4zaqhc31dlS+hKlZ7keZfDaqAY6Zjef
++pD2Lpl0x2ckGfA/AdZJG//pPRv1/qqPyVo7M9p4PtZoRx6H43MkRbyfA9EamnWRg
++oJUFfdrkPmAGRex7F2gOPslPBAcWHjyQHlYhOLct61OqjAyOzMo6aKMMbRGDmvp2
++nU+hORP8mt0dvZa5cvrDBCwya4pL+O+zVs8tukj7JkGy076kugpN2RKy9CY7ulDr
++YB88+22+cOUrt3i0wWL35FdE6WrYmHKcaIgbwFyJIZFKgcw0jLZYQpe8xwARAQAB
++tBxEYW5keSBGaWVkIDxkbmZAZXhhbXBsZS5jb20+iQJRBBMBCQA7FiEEiPvOQkup
++lSoUGmope1RDrqpvAfMFAmafpaECGwMFCwkIBwICIgIGFQoJCAsCBBYCAwECHgcC
++F4AACgkQe1RDrqpvAfPFvQ/+NLKjntG9DXVUvt6lh1c6B1Qkc+NrNRGQB1B0LzNa
++HoJSumryG6vOdOj/E7ubLSG5n0infuvO6K0b36uM3fcbZYdFiDENwwE4bO2zVZwe
++l+8a1h52qmNtCR2cLC+UydlRjLziqXjG7+nsjuMYAopD8zL1/MM9m0aoZwQPB1zY
++zXUNbwJ5BrgRi2EpfDC0qzbQPUY7YMPn0qN0tiF07u2FyML2kEqZLzy9ouB79uIx
++h15OZywYun6U9L9uXBR/bfy+f0XmQ0o5DVu66Jtl75SEPnvi7TDT1MUWb0x/D38u
++zP8Cx17hODUTUfh4fzHKB4JxqravP/mvjmdJWom0dzIWLn2P93wfhkku/gJ3Sx9w
++aTyqIV5cwBS1RjE/hFzC3qZZe41D681IBQ4K04NzDVrhiE7bcXIokgGwNbXQwzMx
++tyuerTlkcNHfwmUIQwwfKuRql74Tod4vQexdhc4eLlCzhiiAYzF9kNlDwg25q31c
++hJ09hCiS7ftFjJu9RZEWmrQvNRnIA2OVeLJgB9Wr2g7+7LqSDKqTDQSF11wUli7G
++WqimdHZk+piCAdOOE3buHpeGZAo7XkpezEV8vwB+ZzVdMj2CqJFSaQbMH26T6zeE
++h94KW09Ymg5MrZaNHf9hba5MiGw0ybF4Wix7OEMx2+a5D+x/XSONpK9YHPsWYe8D
++vH25Ag0EZp+loQEQALYxwRwyPF1s5HCAHbxyh5v9/N/C+Lz1U40QfLMQIp/w17EH
++2PrvGgAcvYNnxmwdFkAdJj8rb+T42C3IUxzjYMaZLwnfUtuUvjxdFxm2mqQ0BiEw
++y3wdvnNEafKnLW+BG4aEpoExnmobPLsWSvQFjpZp38Hyu4QZU1PsxX1rdkB9xeQz
++pCIVPSJDfVFkTSHwTrXigWMuHLq6xWzTTXh++dtOBCmRA4UObMtJo6BAZeZxJxyj
++S+szUgskkNADC7SUbokFG6JIvEOVUM8jSlVM11qs5NqIFyKPqQqwD0biohbmREj7
++yDp+r6b6jKm+ArWHW3Hqa2jYMfGxoC9Cs4pMnp0L+Bklc0kfyPtIE2WFvdCexm2c
++bml8S0v7DbN5J0YuptRP+8lqKMsjc7N3Apu/KqYmmkd9FLMu/YFbECO7ySR9Dtsw
++CDHWuz5m5TdZjP5YCD3G+fyLv2e5O8TjOQwuqIBD9OOdrynhT5A1v4Tnb1/9NHyJ
++Tz18/FJbFKBHJVLklYApOXumkwNoA8jFvqhZSAcg1AqPQnMQpdUMAeeGpObn2H9g
++yUsULefA04GPcLfFfubBeAKhL01rb48jkWiW8CGntGpWsxwlYEd4tcxLf7Td0LV2
++xXZAIswRaqFeS2E2+znc9m05qVus1jE1Ioj/TuOVMtq6BQN+7o/JHXMiLQ2ZABEB
++AAGJAjYEGAEJACAWIQSI+85CS6mVKhQaail7VEOuqm8B8wUCZp+loQIbDAAKCRB7
++VEOuqm8B87UmEACFBvl5GXcgv2MpHvgiWTjsP4o+a1UnVLIZr5R/ebR9r6gRonET
++ISI9SWIp8FC5bGBhssN8FfOwoFiVKIiloP+TXnTcHtgn/ZrO93YlmfTlihfGH9pw
++52SGN3veu5JiU2wVO2SnOBDyKJiJLde8FhjtBIN+zcL4kT803EZgVsxW9eMMD5kA
++Ngdm5/UqvkvgWuHgSLP6OHsoxK7DdVScNC1u9mWEsWLf7godP05eoegdzH+L2L6O
++pCTaobPGU6e73x/cLzRf/AbxYXwI4ELTJ6gpldBJ9OGbO0DvpzR8oWI6mg3UlEXJ
++ZAoG7mp4cDo0sza7Dz/fMLWla51Vx7vV8MTajKxTjoJrTweMl18QxN1En73SvygJ
++iphy6R1u/niLYMx/HxyyvEERgRL3Bsg5orFEiV+a9sGp0SdQtc5tDQww4WOVx5Qg
++03k28pKwSd8+S/6Q6o8+HQgQvSF/fYijE/sk0H9RQdQYUIAKnGdRGILTMu540n/R
++rQFB6pjPhOoo5LB6DSEOpB0eRaZn+H40rg8E9F7dXrMR6q9WsyVWMdCkosLqxmVy
++kwsp+iTOMOmOx37EpxYCXtIeYazMoaL9fKYjnaN6kt4CxvlCGLpxTnNMNtCHoU9N
++3bQZ5RxBa+R0l6xzMvwpkuCQEa59SdfOwo5uCUTgGTMm5hsJ060LW4Vupg==
++=P1HS
+ -----END PGP PUBLIC KEY BLOCK-----
+diff --git a/tests/test_crypto.py b/tests/test_crypto.py
+index bb55d2203..dbbcfd630 100644
+--- a/tests/test_crypto.py
++++ b/tests/test_crypto.py
+@@ -30,7 +30,7 @@ import dnf.yum.misc
+ import tests.support
+ 
+ 
+-FINGERPRINT = '0BE49FAF9C955F4F1A98D14B24362A8492530C8E'
++FINGERPRINT = '88FBCE424BA9952A141A6A297B5443AEAA6F01F3'
+ KEYFILE = tests.support.resource_path('keys/key.pub')
+ KEYFILE_URL = 'file://%s' % KEYFILE
+ 
+@@ -53,11 +53,11 @@ class CryptoTest(tests.support.TestCase):
+ 
+     def test_keyids_from_pubring(self):
+         ids = dnf.crypto.keyids_from_pubring(self.PUBRING_DIR)
+-        self.assertIn('24362A8492530C8E', ids)
++        self.assertIn('7B5443AEAA6F01F3', ids)
+ 
+     def test_printable_fingerprint(self):
+         self.assertEqual(dnf.crypto._printable_fingerprint(FINGERPRINT),
+-                         '0BE4 9FAF 9C95 5F4F 1A98 D14B 2436 2A84 9253 0C8E')
++                         '88FB CE42 4BA9 952A 141A 6A29 7B54 43AE AA6F 01F3')
+ 
+     def test_pubring_dir(self):
+         self.assertNotEqual(os.environ.get('GNUPGHOME'), self.PUBRING_DIR)
+@@ -68,10 +68,10 @@ class CryptoTest(tests.support.TestCase):
+         with open(KEYFILE, 'rb') as keyfile:
+             info = dnf.crypto.rawkey2infos(keyfile)[0]
+         self.assertEqual(info.fingerprint, FINGERPRINT)
+-        self.assertEqual(info.short_id, '92530C8E')
+-        self.assertEqual(info.rpm_id, '92530c8e')
+-        self.assertIn(b'Frmy6HXUL\n', info.raw_key)
+-        self.assertEqual(info.timestamp, 1408534646)
++        self.assertEqual(info.short_id, 'AA6F01F3')
++        self.assertEqual(info.rpm_id, 'aa6f01f3')
++        self.assertIn(b'E4bO2zVZwe\n', info.raw_key)
++        self.assertEqual(info.timestamp, 1721738657)
+         self.assertEqual(info.userid, 'Dandy Fied <dnf@example.com>')
+ 
+     def test_retrieve(self):
+-- 
+2.45.2
+

@@ -1,0 +1,31 @@
+From f211e1a41a3d3180481e930836ee1a52a7a32487 Mon Sep 17 00:00:00 2001
+From: Jaroslav Mracek <jmracek@redhat.com>
+Date: Thu, 23 May 2024 11:25:29 +0200
+Subject: [PATCH] [doc] Remove provide of spec definition for repoquery command
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Repoquery command never matched spec with provides.
+
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ doc/command_ref.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/doc/command_ref.rst b/doc/command_ref.rst
+index 5fba2ebf..5684b061 100644
+--- a/doc/command_ref.rst
++++ b/doc/command_ref.rst
+@@ -1266,7 +1266,7 @@ Together with ``<package-file-spec>``, control what packages are displayed in th
+ packages to those matching the specification. All packages are considered if no ``<package-file-spec>`` is specified.
+ 
+ ``<package-file-spec>``
+-    Package specification in the NEVRA format (name[-[epoch:]version[-release]][.arch]), a package provide or a file provide. See :ref:`Specifying Packages
++    Package specification in the NEVRA format (name[-[epoch:]version[-release]][.arch]) or a file provide. See :ref:`Specifying Packages
+     <specifying_packages-label>`.
+ 
+ ``-a``, ``--all``
+-- 
+2.45.2
+

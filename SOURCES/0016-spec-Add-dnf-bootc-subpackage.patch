@@ -1,0 +1,56 @@
+From dc461487b3a1323d96183e5c229a307d274a3ecc Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Tue, 28 Jan 2025 11:27:00 -0500
+Subject: [PATCH 16/17] spec: Add dnf-bootc subpackage
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: 76a0c339eb172b1b2a4b1aa8b4db8d6a5145916b
+
+dnf-bootc's only job is to Require python3-gobject-base, ostree,
+ostree-libs, and util-linux-core, which are needed to interact with
+bootc systems. We don't want to add these dependencies on `python3-dnf`
+because we don't want them on non-bootc systems, so we use a subpackage.
+
+Resolves: https://issues.redhat.com/browse/RHEL-76849
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf.spec | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/dnf.spec b/dnf.spec
+index 98b6be42c..c749ab41e 100644
+--- a/dnf.spec
++++ b/dnf.spec
+@@ -191,6 +191,17 @@ Requires:       python3-%{name} = %{version}-%{release}
+ %description automatic
+ Systemd units that can periodically download package upgrades and apply them.
+ 
++%package bootc
++Summary:        %{pkg_summary} - additional bootc dependencies
++Requires:       python3-%{name} = %{version}-%{release}
++Requires:       ostree
++Requires:       ostree-libs
++Requires:       python3-gobject-base
++Requires:       util-linux-core
++
++%description bootc
++Additional dependencies needed to perform transactions on booted bootc (bootable containers) systems.
++
+ 
+ %prep
+ %autosetup
+@@ -413,6 +424,9 @@ popd
+ %{_unitdir}/%{name}-automatic-install.timer
+ %{python3_sitelib}/%{name}/automatic/
+ 
++%files bootc
++# bootc subpackage does not include any files
++
+ %changelog
+ * Wed Apr 24 2024 Jan Kolarik <jkolarik@redhat.com> - 4.20.0-1
+ - repoquery: Fix loading filelists when -f is used (RhBug:2276012)
+-- 
+2.48.1
+

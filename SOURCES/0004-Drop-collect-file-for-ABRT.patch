@@ -1,0 +1,81 @@
+From 78e2838c62bb842cdd6f3adc26e246b97cb7292d Mon Sep 17 00:00:00 2001
+From: Jaroslav Mracek <jmracek@redhat.com>
+Date: Tue, 11 Jun 2024 16:02:21 +0200
+Subject: [PATCH] Drop collect file for ABRT
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+It looks like that it is not required anymore
+
+Resolve: https://issues.redhat.com/browse/RHEL-40382
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf.spec             |  2 --
+ etc/CMakeLists.txt   |  1 -
+ etc/collect_dnf.conf | 24 ------------------------
+ 3 files changed, 27 deletions(-)
+ delete mode 100644 etc/collect_dnf.conf
+
+diff --git a/dnf.spec b/dnf.spec
+index b3b30529..7bc90c5d 100644
+--- a/dnf.spec
++++ b/dnf.spec
+@@ -103,7 +103,6 @@ Conflicts:      python3-dnf-plugins-extras-common < %{conflicts_dnf_plugins_extr
+ 
+ %package data
+ Summary:        Common data and configuration files for DNF
+-Requires:       libreport-filesystem
+ %if %{with dnf5_obsoletes_dnf}
+ Requires:       /etc/dnf/dnf.conf
+ %endif
+@@ -336,7 +335,6 @@ popd
+ %{_mandir}/man5/%{name}.conf.5*
+ %endif
+ %{_tmpfilesdir}/%{name}.conf
+-%{_sysconfdir}/libreport/events.d/collect_dnf.conf
+ 
+ %files -n %{yum_subpackage_name}
+ %if "%{yum_compat_level}" == "full"
+diff --git a/etc/CMakeLists.txt b/etc/CMakeLists.txt
+index c7814205..27e3c8ed 100644
+--- a/etc/CMakeLists.txt
++++ b/etc/CMakeLists.txt
+@@ -1,4 +1,3 @@
+-INSTALL (FILES "collect_dnf.conf" DESTINATION ${SYSCONFDIR}/libreport/events.d/)
+ ADD_SUBDIRECTORY (bash_completion.d)
+ ADD_SUBDIRECTORY (dnf)
+ ADD_SUBDIRECTORY (logrotate.d)
+diff --git a/etc/collect_dnf.conf b/etc/collect_dnf.conf
+deleted file mode 100644
+index b99721b1..00000000
+--- a/etc/collect_dnf.conf
++++ /dev/null
+@@ -1,24 +0,0 @@
+-EVENT=notify component=dnf
+-        # there has to be a comment here, otherwise
+-        # the next line is interpreted as a condition
+-        function fetch()
+-        {
+-            for log in $*; do
+-            new_name=${log//\//_}
+-            cp $log $new_name
+-            done
+-        }
+-
+-        logs=`find /var/cache/dnf -iname '*.log'`
+-        fetch $logs
+-        fetch /var/log/dnf.log
+-        # this would fail for a non-priviledged user
+-        journalctl _SYSTEMD_UNIT=dnf-makecache.service &>dnf-makecache.log
+-        fetch /var/log/dnf.transaction.log
+-        if [[ -r username ]]; then
+-            username=`cat username`
+-            if [[ $username != "root" ]]; then
+-            logs=`find /var/tmp -path "/var/tmp/dnf-${username}-*" -iname '*.log'`
+-            fetch $logs
+-            fi
+-        fi
+-- 
+2.45.2
+

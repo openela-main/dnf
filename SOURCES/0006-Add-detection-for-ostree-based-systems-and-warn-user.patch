@@ -1,0 +1,98 @@
+From b00c7171f58dbbda3df4bf5f2e65cbc7eff37a5b Mon Sep 17 00:00:00 2001
+From: David Cantrell <dcantrell@redhat.com>
+Date: Thu, 15 Feb 2024 14:03:32 -0500
+Subject: [PATCH] Add detection for ostree-based systems and warn users about
+ losing changes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: 5c050ba2324c5fb95bf0e0501c7925f38f6a09dc
+
+On ostree-based systems, users can use dnf to customize the
+environment but those changes will be lost at the next ostree-based
+image update.  If you want to retain changes between ostree-updates
+you need to make use of rpm-ostree right now.
+
+Signed-off-by: David Cantrell <dcantrell@redhat.com>
+Resolves: https://issues.redhat.com/browse/RHEL-49671
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf/cli/cli.py |  9 +++++++++
+ dnf/util.py    | 31 +++++++++++++++++++++++++++++++
+ 2 files changed, 40 insertions(+)
+
+diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
+index 1824bd00e..c14f83639 100644
+--- a/dnf/cli/cli.py
++++ b/dnf/cli/cli.py
+@@ -214,6 +214,15 @@ class BaseCli(dnf.Base):
+             elif 'test' in self.conf.tsflags:
+                 logger.info(_("{prog} will only download packages, install gpg keys, and check the "
+                               "transaction.").format(prog=dnf.util.MAIN_PROG_UPPER))
++            if dnf.util.is_container():
++                _container_msg = _("""
++*** This system is managed with ostree.  Changes to the system
++*** made with dnf will be lost with the next ostree-based update.
++*** If you do not want to lose these changes, use 'rpm-ostree'.
++""")
++                logger.info(_container_msg)
++                raise CliError(_("Operation aborted."))
++
+             if self._promptWanted():
+                 if self.conf.assumeno or not self.output.userconfirm():
+                     raise CliError(_("Operation aborted."))
+diff --git a/dnf/util.py b/dnf/util.py
+index 6cd7ad41f..1b465bda5 100644
+--- a/dnf/util.py
++++ b/dnf/util.py
+@@ -33,11 +33,13 @@ import errno
+ import functools
+ import hawkey
+ import itertools
++import json
+ import locale
+ import logging
+ import os
+ import pwd
+ import shutil
++import subprocess
+ import sys
+ import tempfile
+ import time
+@@ -639,3 +641,32 @@ def _is_file_pattern_present(specs):
+         if subj._filename_pattern:
+             return True
+     return False
++
++
++def is_container():
++    """Returns true is the system is managed as an immutable container,
++       false otherwise.  If msg is True, a warning message is displayed
++       for the user.
++    """
++
++    bootc = '/usr/bin/bootc'
++    ostree = '/sysroot/ostree'
++
++    if os.path.isfile(bootc) and os.access(bootc, os.X_OK):
++        p = subprocess.Popen([bootc, "status", "--json"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
++        (out, err) = p.communicate()
++
++        if p.returncode == 0:
++            # check the output of 'bootc status'
++            j = json.loads(out)
++
++            # XXX: the API from bootc status is evolving
++            status = j.get("status", "")
++            kind = j.get("kind", "")
++
++            if kind.lower() == "bootchost" and bool(status.get("isContainer", None)):
++                return True
++    elif os.path.isdir(ostree):
++        return True
++
++    return False
+-- 
+2.46.2
+

@@ -1,0 +1,40 @@
+From 86bc1d60e1b8188ca5a682974d734ac3a0cdc102 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Petr=20P=C3=ADsa=C5=99?= <ppisar@redhat.com>
+Date: Thu, 10 Oct 2024 10:57:48 +0200
+Subject: [PATCH] Allow --downloadonly on read-only bootc system
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upstream commit: 8d888d26e6da27ba37243d7504eb42472f389bde
+
+"dnf install --downloadonly" failed on read-only bootc system despite
+not running the transaction. The downloaded packages are stored under
+writable /var or to a directory explicitly choosen by a user.
+
+This patch suppresses the bootc read-only bailout if --downloadonly
+option is used.
+
+https://issues.redhat.com/browse/RHEL-62028
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf/cli/cli.py | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
+index 008262ea0..d3844df34 100644
+--- a/dnf/cli/cli.py
++++ b/dnf/cli/cli.py
+@@ -215,7 +215,8 @@ class BaseCli(dnf.Base):
+                 logger.info(_("{prog} will only download packages, install gpg keys, and check the "
+                               "transaction.").format(prog=dnf.util.MAIN_PROG_UPPER))
+             if dnf.util._is_bootc_host() and \
+-                    os.path.realpath(self.conf.installroot) == "/":
++                    os.path.realpath(self.conf.installroot) == "/" and \
++                    not self.conf.downloadonly:
+                 _bootc_host_msg = _("""
+ *** Error: system is configured to be read-only; for more
+ *** information run `bootc --help`.
+-- 
+2.47.0
+

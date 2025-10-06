@@ -1,0 +1,57 @@
+From 244d46c247bcac729cd84f7454157b86982e2233 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Mon, 14 Jul 2025 17:37:56 +0000
+Subject: [PATCH 2/2] Add modularity deprecation warning to doc pages
+
+---
+ doc/api_module.rst  | 2 ++
+ doc/command_ref.rst | 2 ++
+ doc/modularity.rst  | 3 ++-
+ 3 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/doc/api_module.rst b/doc/api_module.rst
+index e2a5c6a11..6d84e214b 100644
+--- a/doc/api_module.rst
++++ b/doc/api_module.rst
+@@ -19,6 +19,8 @@
+  Modularity Interface
+ =====================
+ 
++.. warning:: Modularity is deprecated, and functionality will be removed in a future release of DNF5.
++
+ .. module:: dnf.module.module_base
+ 
+ 
+diff --git a/doc/command_ref.rst b/doc/command_ref.rst
+index f7b8e22c8..4e3077283 100644
+--- a/doc/command_ref.rst
++++ b/doc/command_ref.rst
+@@ -1025,6 +1025,8 @@ Module Command
+ 
+ | Command: ``module``
+ 
++.. warning:: Modularity is deprecated, and functionality will be removed in a future release of DNF5.
++
+ Modularity overview is available at :ref:`man page dnf.modularity(7) <modularity-label>`.
+ Module subcommands take :ref:`\<module-spec>\ <specifying_modules-label>`... arguments that specify modules or profiles.
+ 
+diff --git a/doc/modularity.rst b/doc/modularity.rst
+index 8ebd07e23..3683bc608 100644
+--- a/doc/modularity.rst
++++ b/doc/modularity.rst
+@@ -21,10 +21,11 @@
+  Modularity
+ ############
+ 
++.. warning:: Modularity is deprecated, and functionality will be removed in a future release of DNF5.
++
+ Modularity is new way of building, organizing and delivering packages.
+ For more details see: https://docs.pagure.org/modularity/
+ 
+-
+ =============
+  Definitions
+ =============
+-- 
+2.50.1
+
