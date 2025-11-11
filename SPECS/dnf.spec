@@ -2,7 +2,7 @@
 %define __cmake_in_source_build 1
 
 # default dependencies
-%global hawkey_version 0.74.0
+%global hawkey_version 0.75.0
 %global libcomps_version 0.1.8
 %global libmodulemd_version 2.9.3
 %global rpm_version 4.14.0
@@ -24,7 +24,7 @@
 %endif
 
 %if 0%{?rhel} == 10
-    %global hawkey_version 0.73.1-8
+    %global hawkey_version 0.73.1-11
 %endif
 
 # override dependencies for fedora 26
@@ -72,7 +72,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:           dnf
 Version:        4.20.0
-Release:        14%{?dist}
+Release:        18%{?dist}
 Summary:        %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:        GPL-2.0-or-later AND GPL-1.0-only
@@ -101,9 +101,19 @@ Patch20:        0020-Add-releasever-major-and-releasever-minor-options.patch
 Patch21:        0021-doc-Document-detect_releasevers-and-update-example.patch
 Patch22:        0022-tests-Patch-detect_releasevers-not-detect_releasever.patch
 Patch23:        0023-Document-how-releasever-releasever_-major-minor-affe.patch
-Patch24:        0024-Add-deprecation-warning-for-module-commands.patch
-Patch25:        0025-Add-modularity-deprecation-warning-to-doc-pages.patch
-Patch26:        0026-automatic-Fix-detecting-releasever_minor.patch
+Patch24:        0024-package-remote_location-takes-basedir-into-account.patch
+Patch25:        0025-persistence-store-persist-transient-in-history-DB.patch
+Patch26:        0026-Print-persist-or-transient-in-history-info.patch
+Patch27:        0027-history-persistence-for-MergedTransaction.patch
+Patch28:        0028-bootc-Check-whether-protected-paths-will-be-modified.patch
+Patch29:        0029-spec-package-etc-dnf-usr_drift_protected_paths.d.patch
+Patch30:        0030-Support-globs-in-usr_drift_protected_paths.patch
+Patch31:        0031-doc-Document-usr_drift_protected_paths.patch
+Patch32:        0032-Load-filelists-if-there-are-any-usr_drift_protected_.patch
+Patch33:        0033-Obsolete-RHEL-9-only-multisig-DNF-plugin.patch
+Patch34:        0034-Add-deprecation-warning-for-module-commands.patch
+Patch35:        0035-Add-modularity-deprecation-warning-to-doc-pages.patch
+Patch36:        0036-automatic-Fix-detecting-releasever_minor.patch
 
 BuildArch:      noarch
 BuildRequires:  cmake
@@ -186,6 +196,7 @@ Requires:       rpm-plugin-systemd-inhibit
 %else
 Recommends:     (rpm-plugin-systemd-inhibit if systemd)
 %endif
+Provides:       dnf4 = %{version}-%{release}
 Provides:       dnf-command(alias)
 Provides:       dnf-command(autoremove)
 Provides:       dnf-command(check-update)
@@ -209,6 +220,10 @@ Provides:       dnf-command(search)
 Provides:       dnf-command(updateinfo)
 Provides:       dnf-command(upgrade)
 Provides:       dnf-command(upgrade-to)
+# RHEL-9-only multisig DNF plugin is function-wise superseded by DNF,
+# RHEL-102336
+Provides:       python3-dnf-plugin-multisig = %{version}-%{release}
+Obsoletes:      python3-dnf-plugin-multisig < 4.4.3
 
 %description -n python3-%{name}
 Python 3 interface to DNF.
@@ -358,6 +373,7 @@ popd
 %dir %{pluginconfpath}
 %if %{without dnf5_obsoletes_dnf}
 %dir %{confdir}/protected.d
+%dir %{confdir}/usr-drift-protected-paths.d
 %dir %{confdir}/vars
 %endif
 %dir %{confdir}/aliases.d
@@ -459,12 +475,24 @@ popd
 # bootc subpackage does not include any files
 
 %changelog
-* Wed Aug 13 2025 Petr Pisar <ppisar@redhat.com> - 4.20.0-14
-- Fix detecting releasever_minor in dnf-automatic (RHEL-108617)
+* Tue Jul 29 2025 Petr Pisar <ppisar@redhat.com> - 4.20.0-18
+- Fix detecting releasever_minor in dnf-automatic (RHEL-106141)
 
-* Tue Aug 12 2025 Evan Goode <egoode@redhat.com> - 4.20.0-13
-- Add deprecation warning to modularity commands/docs
-  Resolves: RHEL-104310
+* Fri Jul 18 2025 Evan Goode <egoode@redhat.com> - 4.20.0-17
+- Add deprecation warning to modularity commands/docs (RHEL-89940)
+
+* Wed Jul 09 2025 Petr Pisar <ppisar@redhat.com> - 4.20.0-16
+- Obsolete RHEL-9-only multisig DNF plugin (RHEL-102336)
+
+* Wed Jun 25 2025 Evan Goode <egoode@redhat.com> - 4.20.0-15
+- Mark transient transactions in DNF history (RHEL-84515)
+- Warn/disallow changes outside /usr, /etc with --transient (RHEL-84501)
+
+* Fri Apr 04 2025 Evan Goode <egoode@redhat.com> - 4.20.0-14
+- spec: Provide dnf4 by python3-dnf (RHEL-82311)
+
+* Tue Mar 11 2025 Marek Blaha <mblaha@redhat.com> - 4.20.0-13
+- package: remote_location() takes basedir into account (RHEL-70875)
 
 * Fri Feb 07 2025 Carl George <carl@redhat.com> - 4.20.0-12
 - Override releasever_{major,minor} with system-release provides (RHEL-68034)

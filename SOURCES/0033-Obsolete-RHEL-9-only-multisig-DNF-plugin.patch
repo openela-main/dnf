@@ -1,0 +1,32 @@
+From 2c4ba6980b4b19041912d24a3b705a3a927dfa39 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Petr=20P=C3=ADsa=C5=99?= <ppisar@redhat.com>
+Date: Wed, 9 Jul 2025 09:00:00 +0200
+Subject: [PATCH] Obsolete RHEL-9-only multisig DNF plugin
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Resolves: RHEL-102336
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ dnf.spec | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/dnf.spec b/dnf.spec
+index 1e7dde917..770c70c13 100644
+--- a/dnf.spec
++++ b/dnf.spec
+@@ -183,6 +183,10 @@ Provides:       dnf-command(search)
+ Provides:       dnf-command(updateinfo)
+ Provides:       dnf-command(upgrade)
+ Provides:       dnf-command(upgrade-to)
++# RHEL-9-only multisig DNF plugin is function-wise superseded by DNF,
++# RHEL-102336
++Provides:       python3-dnf-plugin-multisig = %{version}-%{release}
++Obsoletes:      python3-dnf-plugin-multisig < 4.4.3
+ 
+ %description -n python3-%{name}
+ Python 3 interface to DNF.
+-- 
+2.50.1
+

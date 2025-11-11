@@ -1,0 +1,29 @@
+From 8b6b08aeb3c162a774f1a63f85ea62969c0d375c Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Tue, 17 Jun 2025 18:52:53 +0000
+Subject: [PATCH 8/8] Load filelists if there are any usr_drift_protected_paths
+
+---
+ dnf/conf/config.py | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/dnf/conf/config.py b/dnf/conf/config.py
+index 7e5e8a38d..145016f6d 100644
+--- a/dnf/conf/config.py
++++ b/dnf/conf/config.py
+@@ -417,6 +417,12 @@ class MainConf(BaseConfig):
+         if skip_broken_val:
+             self._set_value('strict', not skip_broken_val, self._get_priority('skip_broken'))
+ 
++        usr_drift_protected_paths = self._get_value('usr_drift_protected_paths')
++        if usr_drift_protected_paths:
++            optional_metadata_types = set(self._get_value('optional_metadata_types'))
++            optional_metadata_types.add('filelists')
++            self._set_value('optional_metadata_types', list(optional_metadata_types))
++
+     @property
+     def releasever(self):
+         # :api
+-- 
+2.49.0
+

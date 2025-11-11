@@ -1,4 +1,4 @@
-From f939a23c1d8436365e7587258f264e79b014befc Mon Sep 17 00:00:00 2001
+From e3719102eb791fce3189b548aca39ad682fc4157 Mon Sep 17 00:00:00 2001
 From: Evan Goode <mail@evangoo.de>
 Date: Mon, 14 Jul 2025 17:31:04 +0000
 Subject: [PATCH 1/2] Add deprecation warning for module commands

@@ -1,0 +1,125 @@
+From 174079ad0ebbb1b76b98c12af4291b71bd893eed Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Thu, 15 May 2025 20:48:58 +0000
+Subject: [PATCH 1/8] persistence: store persist/transient in history DB
+
+For all transactions, store whether the transaction was persistent or
+transient in the history DB. Requires libdnf 0.75.0.
+
+Moves some of the bootc logic to the `configure` phase.
+
+For https://github.com/rpm-software-management/dnf/issues/2196.
+---
+ dnf.spec          | 2 +-
+ dnf/base.py       | 6 ++++--
+ dnf/cli/cli.py    | 4 ++++
+ dnf/db/history.py | 8 +++++++-
+ 4 files changed, 16 insertions(+), 4 deletions(-)
+
+diff --git a/dnf.spec b/dnf.spec
+index b843f4e6e..c9aacfca2 100644
+--- a/dnf.spec
++++ b/dnf.spec
+@@ -2,7 +2,7 @@
+ %define __cmake_in_source_build 1
+ 
+ # default dependencies
+-%global hawkey_version 0.74.0
++%global hawkey_version 0.75.0
+ %global libcomps_version 0.1.8
+ %global libmodulemd_version 2.9.3
+ %global rpm_version 4.14.0
+diff --git a/dnf/base.py b/dnf/base.py
+index c4a4f8543..7117dbe34 100644
+--- a/dnf/base.py
++++ b/dnf/base.py
+@@ -118,6 +118,7 @@ class Base(object):
+         self._update_security_options = {}
+         self._allow_erasing = False
+         self._repo_set_imported_gpg_keys = set()
++        self._persistence = libdnf.transaction.TransactionPersistence_UNKNOWN
+         self.output = None
+ 
+     def __enter__(self):
+@@ -973,7 +974,7 @@ class Base(object):
+                 else:
+                     rpmdb_version = old.end_rpmdb_version
+ 
+-                self.history.beg(rpmdb_version, [], [], cmdline)
++                self.history.beg(rpmdb_version, [], [], cmdline=cmdline, persistence=self._persistence)
+                 self.history.end(rpmdb_version)
+             self._plugins.run_pre_transaction()
+             self._plugins.run_transaction()
+@@ -1124,7 +1125,8 @@ class Base(object):
+                 cmdline = ' '.join(self.cmds)
+ 
+             comment = self.conf.comment if self.conf.comment else ""
+-            tid = self.history.beg(rpmdbv, using_pkgs, [], cmdline, comment)
++            tid = self.history.beg(rpmdbv, using_pkgs, [], cmdline=cmdline,
++                                   comment=comment, persistence=self._persistence)
+ 
+         if self.conf.reset_nice:
+             onice = os.nice(0)
+diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
+index 0be9559d4..f2a1a99ee 100644
+--- a/dnf/cli/cli.py
++++ b/dnf/cli/cli.py
+@@ -244,11 +244,14 @@ class BaseCli(dnf.Base):
+                         logger.info(_("A transient overlay will be created on /usr that will be discarded on reboot. "
+                                       "Keep in mind that changes to /etc and /var will still persist, and packages "
+                                       "commonly modify these directories."))
++                self._persistence = libdnf.transaction.TransactionPersistence_TRANSIENT
+             else:
+                 # Not a bootc transaction.
+                 if self.conf.persistence == "transient":
+                     raise CliError(_("Transient transactions are only supported on bootc systems."))
+ 
++                self._persistence = libdnf.transaction.TransactionPersistence_PERSIST
++
+             if self._promptWanted():
+                 if self.conf.assumeno or not self.output.userconfirm():
+                     raise CliError(_("Operation aborted."))
+@@ -945,6 +948,7 @@ class Cli(object):
+                       )
+                 )
+ 
++
+     def _read_conf_file(self, releasever=None, releasever_major=None, releasever_minor=None):
+         timer = dnf.logging.Timer('config')
+         conf = self.base.conf
+diff --git a/dnf/db/history.py b/dnf/db/history.py
+index bf9020ad0..2cde9cbc8 100644
+--- a/dnf/db/history.py
++++ b/dnf/db/history.py
+@@ -222,6 +222,10 @@ class TransactionWrapper(object):
+     def comment(self):
+         return self._trans.getComment()
+ 
++    @property
++    def persistence(self):
++        return self._trans.getPersistence()
++
+     def tids(self):
+         return [self._trans.getId()]
+ 
+@@ -418,7 +422,8 @@ class SwdbInterface(object):
+ #        return result
+ 
+     # TODO: rename to begin_transaction?
+-    def beg(self, rpmdb_version, using_pkgs, tsis, cmdline=None, comment=""):
++    def beg(self, rpmdb_version, using_pkgs, tsis, cmdline=None, comment="",
++            persistence=libdnf.transaction.TransactionPersistence_UNKNOWN):
+         try:
+             self.swdb.initTransaction()
+         except:
+@@ -431,6 +436,7 @@ class SwdbInterface(object):
+             int(misc.getloginuid()),
+             comment)
+         self.swdb.setReleasever(self.releasever)
++        self.swdb.setPersistence(persistence)
+         self._tid = tid
+ 
+         return tid
+-- 
+2.49.0
+

@@ -1,0 +1,36 @@
+From 106bd18ddf28a4b4fdf13da8708e6aaa66eaeea8 Mon Sep 17 00:00:00 2001
+From: Marek Blaha <mblaha@redhat.com>
+Date: Wed, 18 Sep 2024 09:46:20 +0200
+Subject: [PATCH] package: remote_location() takes basedir into account
+
+If the package location in the repodata contains basedir, it needs to be
+taken into account when calculating the package's remote_location.
+
+Resolves: https://github.com/rpm-software-management/dnf/issues/2130
+
+Upstream commit: 7b27428d
+
+= changelog =
+msg:           Fix package location if baseurl is present in the metadata
+type:          bugfix
+resolves:      https://github.com/rpm-software-management/dnf/issues/2130
+---
+ dnf/package.py | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/dnf/package.py b/dnf/package.py
+index fc89cf98..5912f79c 100644
+--- a/dnf/package.py
++++ b/dnf/package.py
+@@ -300,6 +300,8 @@ class Package(hawkey.Package):
+         """
+         if self._from_system or self._from_cmdline:
+             return None
++        if self.baseurl:
++            return os.path.join(self.baseurl, self.location.lstrip("/"))
+         return self.repo.remote_location(self.location, schemes)
+ 
+     def _is_local_pkg(self):
+-- 
+2.48.1
+

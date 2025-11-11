@@ -1,4 +1,4 @@
-From 244d46c247bcac729cd84f7454157b86982e2233 Mon Sep 17 00:00:00 2001
+From 031fe5abde80ed724502c15ccee70f54a511a6a7 Mon Sep 17 00:00:00 2001
 From: Evan Goode <mail@evangoo.de>
 Date: Mon, 14 Jul 2025 17:37:56 +0000
 Subject: [PATCH 2/2] Add modularity deprecation warning to doc pages

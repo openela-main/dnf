@@ -1,0 +1,58 @@
+From cfe76d5dfacee662cf54ab9d132df5ac2e0be4b6 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Mon, 19 May 2025 22:36:50 +0000
+Subject: [PATCH 3/8] history: persistence for MergedTransaction
+
+---
+ dnf/cli/output.py | 18 ++++++++++++------
+ dnf/db/history.py |  4 ++++
+ 2 files changed, 16 insertions(+), 6 deletions(-)
+
+diff --git a/dnf/cli/output.py b/dnf/cli/output.py
+index 4699f7800..5238b356e 100644
+--- a/dnf/cli/output.py
++++ b/dnf/cli/output.py
+@@ -1777,13 +1777,19 @@ Transaction Summary
+             else:
+                 print(_("Command Line   :"), old.cmdline)
+ 
+-        if old.persistence == libdnf.transaction.TransactionPersistence_PERSIST:
+-            persistence_str = "Persist"
+-        elif old.persistence == libdnf.transaction.TransactionPersistence_TRANSIENT:
+-            persistence_str = "Transient"
++        def print_persistence(persistence):
++            if old.persistence == libdnf.transaction.TransactionPersistence_PERSIST:
++                persistence_str = "Persist"
++            elif old.persistence == libdnf.transaction.TransactionPersistence_TRANSIENT:
++                persistence_str = "Transient"
++            else:
++                persistence_str = "Unknown"
++            print(_("Persistence    :"), persistence_str)
++        if isinstance(old.persistence, (list, tuple)):
++            for persistence in old.persistence:
++                print_persistence(persistence)
+         else:
+-            persistence_str = "Unknown"
+-        print(_("Persistence    :"), persistence_str)
++            print_persistence(old.persistence)
+ 
+         if old.comment is not None:
+             if isinstance(old.comment, (list, tuple)):
+diff --git a/dnf/db/history.py b/dnf/db/history.py
+index 2cde9cbc8..a2c1a8882 100644
+--- a/dnf/db/history.py
++++ b/dnf/db/history.py
+@@ -269,6 +269,10 @@ class MergedTransactionWrapper(TransactionWrapper):
+     def cmdline(self):
+         return self._trans.listCmdlines()
+ 
++    @property
++    def persistence(self):
++        return self._trans.listPersistences()
++
+     @property
+     def releasever(self):
+         return self._trans.listReleasevers()
+-- 
+2.49.0
+

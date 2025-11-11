@@ -1,4 +1,4 @@
-From ed51df30350eadc77688d3a44184b5fdb8db9b97 Mon Sep 17 00:00:00 2001
+From 341da1e3415980dceaf8d4792f2b46da638a6b10 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Petr=20P=C3=ADsa=C5=99?= <ppisar@redhat.com>
 Date: Mon, 28 Jul 2025 17:25:09 +0200
 Subject: [PATCH] automatic: Fix detecting releasever_minor
@@ -33,7 +33,7 @@ Instead it saves the original releasever_minor value to be able to
 default to it again.
 
 Resolve: #2259
-Resolve: https://issues.redhat.com/browse/RHEL-108617
+Resolve: https://issues.redhat.com/browse/RHEL-106141
 Signed-off-by: Petr Písař <ppisar@redhat.com>
 ---
  dnf/cli/cli.py       |  8 ++++++--
@@ -41,10 +41,10 @@ Signed-off-by: Petr Písař <ppisar@redhat.com>
  2 files changed, 18 insertions(+), 2 deletions(-)
 
 diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
-index 0be9559d4..f1eef7a9a 100644
+index 289c88224..d4bf811c1 100644
 --- a/dnf/cli/cli.py
 +++ b/dnf/cli/cli.py
-@@ -986,9 +986,13 @@ class Cli(object):
+@@ -1010,9 +1010,13 @@ class Cli(object):
                  if arg is not None:
                      return arg
              return None
