@@ -1,0 +1,39 @@
+From 45429b40f588c739fab8e369d92fac3b78472b19 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Fri, 7 Feb 2025 14:22:09 -0500
+Subject: [PATCH 11/11] Move releasever_minor setter docstring to the correct
+ function
+
+---
+ dnf/conf/config.py | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/dnf/conf/config.py b/dnf/conf/config.py
+index 3bcd2f3d3..b6a1b0f2f 100644
+--- a/dnf/conf/config.py
++++ b/dnf/conf/config.py
+@@ -456,16 +456,16 @@ class MainConf(BaseConfig):
+     @property
+     def releasever_minor(self):
+         # :api
+-        """
+-        Override the releasever_minor variable, which is usually derived from
+-        the releasever variable. This setter does not update the value of
+-        $releasever.
+-        """
+         return self.substitutions.get('releasever_minor')
+ 
+     @releasever_minor.setter
+     def releasever_minor(self, val):
+         # :api
++        """
++        Override the releasever_minor variable, which is usually derived from
++        the releasever variable. This setter does not update the value of
++        $releasever.
++        """
+         if val is None:
+             self.substitutions.pop('releasever_minor', None)
+             return
+-- 
+2.49.0
+

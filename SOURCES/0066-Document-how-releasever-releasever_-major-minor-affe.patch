@@ -1,0 +1,96 @@
+From c3ba8afd83f4df5a3ed66088a458d65926a03716 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Tue, 4 Feb 2025 23:01:43 +0000
+Subject: [PATCH 10/11] Document how --releasever, --releasever_{major,minor}
+ affect each other
+
+---
+ dnf/conf/config.py   | 16 ++++++++++++++++
+ doc/command_ref.rst  |  2 ++
+ tests/test_config.py |  3 +++
+ 3 files changed, 21 insertions(+)
+
+diff --git a/dnf/conf/config.py b/dnf/conf/config.py
+index 49280e522..3bcd2f3d3 100644
+--- a/dnf/conf/config.py
++++ b/dnf/conf/config.py
+@@ -424,6 +424,12 @@ class MainConf(BaseConfig):
+     @releasever.setter
+     def releasever(self, val):
+         # :api
++        """
++        Sets the releasever variable and sets releasever_major and
++        releasever_minor accordingly. releasever_major is set to the part of
++        $releasever before the first ".". releasever_minor is set to the part
++        after the first ".".
++        """
+         if val is None:
+             self.substitutions.pop('releasever', None)
+             return
+@@ -437,6 +443,11 @@ class MainConf(BaseConfig):
+     @releasever_major.setter
+     def releasever_major(self, val):
+         # :api
++        """
++        Override the releasever_major variable, which is usually derived from
++        the releasever variable. This setter does not update the value of
++        $releasever.
++        """
+         if val is None:
+             self.substitutions.pop('releasever_major', None)
+             return
+@@ -445,6 +456,11 @@ class MainConf(BaseConfig):
+     @property
+     def releasever_minor(self):
+         # :api
++        """
++        Override the releasever_minor variable, which is usually derived from
++        the releasever variable. This setter does not update the value of
++        $releasever.
++        """
+         return self.substitutions.get('releasever_minor')
+ 
+     @releasever_minor.setter
+diff --git a/doc/command_ref.rst b/doc/command_ref.rst
+index dc2e01efc..1a20ae397 100644
+--- a/doc/command_ref.rst
++++ b/doc/command_ref.rst
+@@ -338,10 +338,12 @@ Options
+ ``--releasever_major=<major version>``
+     Override the releasever_major variable, which is usually automatically
+     detected or taken from the part of ``$releasever`` before the first ``.``.
++    This option does not affect the ``$releasever`` variable.
+ 
+ ``--releasever_minor=<minor version>``
+     Override the releasever_minor variable, which is usually automatically
+     detected or taken from the part of ``$releasever`` after the first ``.``.
++    This option does not affect the ``$releasever`` variable.
+ 
+ .. _repofrompath_options-label:
+ 
+diff --git a/tests/test_config.py b/tests/test_config.py
+index 16bdcccba..69ba988c4 100644
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -149,15 +149,18 @@ class ConfTest(tests.support.TestCase):
+     def test_releasever_major_minor(self):
+         conf = Conf()
+         conf.releasever = '1.2'
++        self.assertEqual(conf.releasever, '1.2')
+         self.assertEqual(conf.releasever_major, '1')
+         self.assertEqual(conf.releasever_minor, '2')
+ 
+         # override releasever_major
+         conf.releasever_major = '3'
++        self.assertEqual(conf.releasever, '1.2')
+         self.assertEqual(conf.releasever_major, '3')
+         self.assertEqual(conf.releasever_minor, '2')
+ 
+         # override releasever_minor
+         conf.releasever_minor = '4'
++        self.assertEqual(conf.releasever, '1.2')
+         self.assertEqual(conf.releasever_major, '3')
+         self.assertEqual(conf.releasever_minor, '4')
+-- 
+2.49.0
+

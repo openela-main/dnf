@@ -1,0 +1,35 @@
+From 26a9f2163c0d3828f474537687ead4e100f5911a Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Fri, 6 Jun 2025 21:24:20 +0000
+Subject: [PATCH 7/8] Support globs in usr_drift_protected_paths
+
+---
+ dnf/cli/cli.py | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
+index 5602a07b1..c41f31ed6 100644
+--- a/dnf/cli/cli.py
++++ b/dnf/cli/cli.py
+@@ -31,6 +31,7 @@ except ImportError:
+     from collections import Sequence
+ from collections import defaultdict
+ import datetime
++from fnmatch import fnmatch
+ import logging
+ import operator
+ import os
+@@ -251,8 +252,8 @@ class BaseCli(dnf.Base):
+                 transaction_protected_paths = defaultdict(list)
+                 for pkg in trans:
+                     for pkg_file_path in sorted(pkg.files):
+-                        for protected_path in self.conf.usr_drift_protected_paths:
+-                            if pkg_file_path.startswith("%s/" % protected_path) or pkg_file_path == protected_path:
++                        for protected_pattern in self.conf.usr_drift_protected_paths:
++                            if fnmatch(pkg_file_path, protected_pattern):
+                                 transaction_protected_paths[pkg.nevra].append(pkg_file_path)
+                 if transaction_protected_paths:
+                     logger.info(_('This operation would modify the following paths, possibly introducing '
+-- 
+2.49.0
+

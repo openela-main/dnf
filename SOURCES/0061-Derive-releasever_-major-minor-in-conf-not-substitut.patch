@@ -1,0 +1,161 @@
+From 9a0f2a9ad87551900e7590ccf023fb9b72b3fe0c Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Mon, 20 Jan 2025 21:36:18 +0000
+Subject: [PATCH 05/11] Derive releasever_{major,minor} in conf, not
+ substitutions
+
+This allows setting a releasever_major or releasever_minor
+independent of releasever, which is needed by EPEL.
+
+Related: https://issues.redhat.com/browse/RHEL-68034
+---
+ dnf/conf/config.py               | 26 ++++++++++++++++++++++++++
+ dnf/conf/substitutions.py        | 17 +++--------------
+ tests/conf/test_substitutions.py | 19 +++++++++----------
+ tests/test_config.py             | 16 ++++++++++++++++
+ 4 files changed, 54 insertions(+), 24 deletions(-)
+
+diff --git a/dnf/conf/config.py b/dnf/conf/config.py
+index ed6daeb2d..49280e522 100644
+--- a/dnf/conf/config.py
++++ b/dnf/conf/config.py
+@@ -429,6 +429,32 @@ class MainConf(BaseConfig):
+             return
+         self.substitutions['releasever'] = str(val)
+ 
++    @property
++    def releasever_major(self):
++        # :api
++        return self.substitutions.get('releasever_major')
++
++    @releasever_major.setter
++    def releasever_major(self, val):
++        # :api
++        if val is None:
++            self.substitutions.pop('releasever_major', None)
++            return
++        self.substitutions['releasever_major'] = str(val)
++
++    @property
++    def releasever_minor(self):
++        # :api
++        return self.substitutions.get('releasever_minor')
++
++    @releasever_minor.setter
++    def releasever_minor(self, val):
++        # :api
++        if val is None:
++            self.substitutions.pop('releasever_minor', None)
++            return
++        self.substitutions['releasever_minor'] = str(val)
++
+     @property
+     def arch(self):
+         # :api
+diff --git a/dnf/conf/substitutions.py b/dnf/conf/substitutions.py
+index 5c736a8df..8582d5d84 100644
+--- a/dnf/conf/substitutions.py
++++ b/dnf/conf/substitutions.py
+@@ -22,11 +22,12 @@ import logging
+ import os
+ import re
+ 
++from libdnf.conf import ConfigParser
+ from dnf.i18n import _
+ from dnf.exceptions import ReadOnlyVariableError
+ 
+ ENVIRONMENT_VARS_RE = re.compile(r'^DNF_VAR_[A-Za-z0-9_]+$')
+-READ_ONLY_VARIABLES = frozenset(("releasever_major", "releasever_minor"))
++READ_ONLY_VARIABLES = frozenset()
+ logger = logging.getLogger('dnf')
+ 
+ 
+@@ -45,18 +46,6 @@ class Substitutions(dict):
+             elif key in numericvars:
+                 self[key] = val
+ 
+-    @staticmethod
+-    def _split_releasever(releasever):
+-        # type: (str) -> tuple[str, str]
+-        pos = releasever.find(".")
+-        if pos == -1:
+-            releasever_major = releasever
+-            releasever_minor = ""
+-        else:
+-            releasever_major = releasever[:pos]
+-            releasever_minor = releasever[pos + 1:]
+-        return releasever_major, releasever_minor
+-
+     def __setitem__(self, key, value):
+         if Substitutions.is_read_only(key):
+             raise ReadOnlyVariableError(f"Variable \"{key}\" is read-only", variable_name=key)
+@@ -65,7 +54,7 @@ class Substitutions(dict):
+         setitem(key, value)
+ 
+         if key == "releasever" and value:
+-            releasever_major, releasever_minor = Substitutions._split_releasever(value)
++            releasever_major, releasever_minor = ConfigParser.splitReleasever(value)
+             setitem("releasever_major", releasever_major)
+             setitem("releasever_minor", releasever_minor)
+ 
+diff --git a/tests/conf/test_substitutions.py b/tests/conf/test_substitutions.py
+index d8ac3c207..78d3e7274 100644
+--- a/tests/conf/test_substitutions.py
++++ b/tests/conf/test_substitutions.py
+@@ -56,16 +56,6 @@ class SubstitutionsFromEnvironmentTest(tests.support.TestCase):
+         self.assertEqual('opera', conf.substitutions['GENRE'])
+ 
+ 
+-class SubstitutionsReadOnlyTest(tests.support.TestCase):
+-    def test_set_readonly(self):
+-        conf = dnf.conf.Conf()
+-        variable_name = "releasever_major"
+-        self.assertTrue(Substitutions.is_read_only(variable_name))
+-        with self.assertRaises(ReadOnlyVariableError) as cm:
+-            conf.substitutions["releasever_major"] = "1"
+-        self.assertEqual(cm.exception.variable_name, "releasever_major")
+-
+-
+ class SubstitutionsReleaseverTest(tests.support.TestCase):
+     def test_releasever_simple(self):
+         conf = dnf.conf.Conf()
+@@ -84,3 +74,12 @@ class SubstitutionsReleaseverTest(tests.support.TestCase):
+         conf.substitutions["releasever"] = "1.23.45"
+         self.assertEqual(conf.substitutions["releasever_major"], "1")
+         self.assertEqual(conf.substitutions["releasever_minor"], "23.45")
++
++    def test_releasever_major_minor_overrides(self):
++        conf = dnf.conf.Conf()
++        conf.substitutions["releasever"] = "1.23"
++        conf.substitutions["releasever_major"] = "45"
++        conf.substitutions["releasever_minor"] = "67"
++        self.assertEqual(conf.substitutions["releasever"], "1.23")
++        self.assertEqual(conf.substitutions["releasever_major"], "45")
++        self.assertEqual(conf.substitutions["releasever_minor"], "67")
+diff --git a/tests/test_config.py b/tests/test_config.py
+index d85026705..16bdcccba 100644
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -145,3 +145,19 @@ class ConfTest(tests.support.TestCase):
+         conf = Conf()
+         with self.assertRaises(dnf.exceptions.ConfigError):
+             conf.debuglevel = '11'
++
++    def test_releasever_major_minor(self):
++        conf = Conf()
++        conf.releasever = '1.2'
++        self.assertEqual(conf.releasever_major, '1')
++        self.assertEqual(conf.releasever_minor, '2')
++
++        # override releasever_major
++        conf.releasever_major = '3'
++        self.assertEqual(conf.releasever_major, '3')
++        self.assertEqual(conf.releasever_minor, '2')
++
++        # override releasever_minor
++        conf.releasever_minor = '4'
++        self.assertEqual(conf.releasever_major, '3')
++        self.assertEqual(conf.releasever_minor, '4')
+-- 
+2.49.0
+

@@ -2,7 +2,7 @@
 %define __cmake_in_source_build 1
 
 # default dependencies
-%global hawkey_version 0.74.0
+%global hawkey_version 0.75.0
 %global libcomps_version 0.1.8
 %global libmodulemd_version 2.9.3
 %global rpm_version 4.14.0
@@ -22,7 +22,7 @@
 %endif
 
 %if 0%{?rhel} == 9
-    %global hawkey_version 0.69.0-13
+    %global hawkey_version 0.69.0-16
 %endif
 
 # override dependencies for fedora 26
@@ -73,7 +73,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:                 dnf
 Version:              4.14.0
-Release:              25%{?dist}
+Release:              31%{?dist}
 Summary:              %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:              GPLv2+
@@ -123,7 +123,30 @@ Patch41:              0041-bootc-Use-ostree-GObject-API-to-get-deployment-statu.
 Patch42:              0042-bootc-Re-locking-use-ostree-admin-unlock-transient.patch
 Patch43:              0043-spec-Add-dnf-bootc-subpackage.patch
 Patch44:              0044-Require-libdnf-0.74.0-with-persistence-option.patch
-Patch45:              9999-change-bugtracker.diff
+Patch45:              0045-package-remote_location-takes-basedir-into-account.patch
+Patch46:              0046-Usage-help-don-t-mark-mandatory-option-parameters-as.patch
+Patch47:              0047-Fix-typo-from-previous-commit-left-over.patch
+Patch48:              0048-disableexcludes-and-disableexcludepkgs-values-are-no.patch
+Patch49:              0049-bootc-tmt-testing.patch
+Patch50:              0050-persistence-store-persist-transient-in-history-DB.patch
+Patch51:              0051-Print-persist-or-transient-in-history-info.patch
+Patch52:              0052-history-persistence-for-MergedTransaction.patch
+Patch53:              0053-bootc-Check-whether-protected-paths-will-be-modified.patch
+Patch54:              0054-spec-package-etc-dnf-usr_drift_protected_paths.d.patch
+Patch55:              0055-Support-globs-in-usr_drift_protected_paths.patch
+Patch56:              0056-doc-Document-usr_drift_protected_paths.patch
+Patch57:              0057-conf-Add-test-for-shell-like-variable-expansion.patch
+Patch58:              0058-Split-releasever-to-releasever_major-and-releasever_.patch
+Patch59:              0059-Document-releasever_major-and-releasever_minor.patch
+Patch60:              0060-Document-shell-like-parameter-expansion-for-variable.patch
+Patch61:              0061-Derive-releasever_-major-minor-in-conf-not-substitut.patch
+Patch62:              0062-Override-releasever_-major-minor-with-provides.patch
+Patch63:              0063-Add-releasever-major-and-releasever-minor-options.patch
+Patch64:              0064-doc-Document-detect_releasevers-and-update-example.patch
+Patch65:              0065-tests-Patch-detect_releasevers-not-detect_releasever.patch
+Patch66:              0066-Document-how-releasever-releasever_-major-minor-affe.patch
+Patch67:              0067-Move-releasever_minor-setter-docstring-to-the-correc.patch
+Patch68:              9999-change-bugtracker.diff
 
 BuildArch:            noarch
 BuildRequires:        cmake
@@ -220,6 +243,7 @@ Requires:             rpm-plugin-systemd-inhibit
 %else
 Recommends:           (rpm-plugin-systemd-inhibit if systemd)
 %endif
+Provides:             dnf4 = %{version}-%{release}
 
 %description -n python3-%{name}
 Python 3 interface to DNF.
@@ -275,6 +299,7 @@ mkdir -p %{buildroot}%{_localstatedir}/log/
 mkdir -p %{buildroot}%{_var}/cache/dnf/
 touch %{buildroot}%{_localstatedir}/log/%{name}.log
 ln -sr %{buildroot}%{_bindir}/dnf-3 %{buildroot}%{_bindir}/dnf
+ln -sr %{buildroot}%{_bindir}/dnf-3 %{buildroot}%{_bindir}/dnf4
 mv %{buildroot}%{_bindir}/dnf-automatic-3 %{buildroot}%{_bindir}/dnf-automatic
 rm -vf %{buildroot}%{_bindir}/dnf-automatic-*
 
@@ -348,6 +373,7 @@ popd
 %dir %{confdir}/modules.defaults.d
 %dir %{pluginconfpath}
 %dir %{confdir}/protected.d
+%dir %{confdir}/usr-drift-protected-paths.d
 %dir %{confdir}/vars
 %dir %{confdir}/aliases.d
 %exclude %{confdir}/aliases.d/zypper.conf
@@ -403,6 +429,7 @@ popd
 
 %files -n python3-%{name}
 %{_bindir}/%{name}-3
+%{_bindir}/%{name}4
 %exclude %{python3_sitelib}/%{name}/automatic
 %{python3_sitelib}/%{name}/
 %dir %{py3pluginpath}
@@ -426,8 +453,28 @@ popd
 # bootc subpackage does not include any files
 
 %changelog
-* Tue May 13 2025 Release Engineering <releng@openela.org> - 4.14.0
+* Tue Nov 11 2025 Release Engineering <releng@openela.org> - 4.14.0
 - Add OpenELA bugtracker
+
+* Mon Jun 30 2025 Evan Goode <egoode@redhat.com> - 4.14.0-31
+- Introduce $releasever_major, $releasever_minor variables, shell-style
+  variable substitution (RHEL-65817)
+
+* Thu Jun 26 2025 Evan Goode <egoode@redhat.com> - 4.14.0-30
+- Mark transient transactions in DNF history (RHEL-84512)
+- Warn/disallow changes outside /usr, /etc with --transient (RHEL-84499)
+
+* Fri May 02 2025 Ales Matej <amatej@redhat.com> - 4.14.0-29
+- man page: don't mark mandatory option parameters as optional (RHEL-63958)
+
+* Fri Apr 04 2025 Evan Goode <egoode@redhat.com> - 4.14.0-28
+- Add dnf4 provides and symlink /usr/bin/dnf4 -> /usr/bin/dnf-3 (RHEL-82310)
+
+* Fri Mar 07 2025 Ales Matej <amatej@redhat.com> - 4.14.0-27
+- usage help: don't mark mandatory option parameters as optional (RHEL-63958)
+
+* Fri Mar 07 2025 Marek Blaha <mblaha@redhat.com> - 4.14.0-26
+- package: remote_location() takes basedir into account (RHEL-71125)
 
 * Tue Feb 04 2025 Petr Pisar <ppisar@redhat.com> - 4.14.0-25
 - Add support for transient transactions (RHEL-70917)

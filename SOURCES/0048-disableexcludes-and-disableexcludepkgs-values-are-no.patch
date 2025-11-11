@@ -1,0 +1,26 @@
+From 0f37439d04cfa6f2b39d3602b1b40570d37af80f Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ale=C5=A1=20Mat=C4=9Bj?= <amatej@redhat.com>
+Date: Mon, 28 Apr 2025 12:41:13 +0200
+Subject: [PATCH 2/2] `--disableexcludes` and `--disableexcludepkgs` values are
+ not optional
+
+---
+ doc/command_ref.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/doc/command_ref.rst b/doc/command_ref.rst
+index 8b55d5a7..30627bd4 100644
+--- a/doc/command_ref.rst
++++ b/doc/command_ref.rst
+@@ -164,7 +164,7 @@ Options
+ 
+ .. _disableexcludes-label:
+ 
+-``--disableexcludes=[all|main|<repoid>], --disableexcludepkgs=[all|main|<repoid>]``
++``--disableexcludes={all|main|<repoid>}, --disableexcludepkgs={all|main|<repoid>}``
+     Disable ``excludepkgs`` and ``includepkgs`` configuration options. Takes one of the following three options:
+ 
+     * ``all``, disables all ``excludepkgs`` and ``includepkgs`` configurations
+-- 
+2.48.1
+

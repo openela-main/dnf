@@ -1,0 +1,139 @@
+From a614ec8eeb440f2fd4bfb196ddb1d24406d420a6 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Mon, 18 Sep 2023 20:42:09 +0000
+Subject: [PATCH 02/11] Split $releasever to $releasever_major and
+ $releasever_minor
+
+Whenever the `releasever` substitution variable is set, automatically
+derive and set the `releasever_major` and `releasever_minor` vars by
+splitting `releasever` on the first ".".
+
+Companion to the DNF 5 implementation here: https://github.com/rpm-software-management/dnf5/pull/800
+
+DNF 5 issue: https://github.com/rpm-software-management/dnf5/issues/710
+
+For https://bugzilla.redhat.com/show_bug.cgi?id=1789346
+---
+ dnf/conf/substitutions.py        | 31 +++++++++++++++++++++++++++++++
+ dnf/exceptions.py                |  6 ++++++
+ tests/conf/test_substitutions.py | 32 ++++++++++++++++++++++++++++++++
+ 3 files changed, 69 insertions(+)
+
+diff --git a/dnf/conf/substitutions.py b/dnf/conf/substitutions.py
+index 4d0f0d55e..5c736a8df 100644
+--- a/dnf/conf/substitutions.py
++++ b/dnf/conf/substitutions.py
+@@ -23,8 +23,10 @@ import os
+ import re
+ 
+ from dnf.i18n import _
++from dnf.exceptions import ReadOnlyVariableError
+ 
+ ENVIRONMENT_VARS_RE = re.compile(r'^DNF_VAR_[A-Za-z0-9_]+$')
++READ_ONLY_VARIABLES = frozenset(("releasever_major", "releasever_minor"))
+ logger = logging.getLogger('dnf')
+ 
+ 
+@@ -43,6 +45,35 @@ class Substitutions(dict):
+             elif key in numericvars:
+                 self[key] = val
+ 
++    @staticmethod
++    def _split_releasever(releasever):
++        # type: (str) -> tuple[str, str]
++        pos = releasever.find(".")
++        if pos == -1:
++            releasever_major = releasever
++            releasever_minor = ""
++        else:
++            releasever_major = releasever[:pos]
++            releasever_minor = releasever[pos + 1:]
++        return releasever_major, releasever_minor
++
++    def __setitem__(self, key, value):
++        if Substitutions.is_read_only(key):
++            raise ReadOnlyVariableError(f"Variable \"{key}\" is read-only", variable_name=key)
++
++        setitem = super(Substitutions, self).__setitem__
++        setitem(key, value)
++
++        if key == "releasever" and value:
++            releasever_major, releasever_minor = Substitutions._split_releasever(value)
++            setitem("releasever_major", releasever_major)
++            setitem("releasever_minor", releasever_minor)
++
++    @staticmethod
++    def is_read_only(key):
++        # type: (str) -> bool
++        return key in READ_ONLY_VARIABLES
++
+     def update_from_etc(self, installroot, varsdir=("/etc/yum/vars/", "/etc/dnf/vars/")):
+         # :api
+ 
+diff --git a/dnf/exceptions.py b/dnf/exceptions.py
+index ef731781d..2d009b2ad 100644
+--- a/dnf/exceptions.py
++++ b/dnf/exceptions.py
+@@ -180,6 +180,12 @@ class ProcessLockError(LockError):
+         return (ProcessLockError, (self.value, self.pid))
+ 
+ 
++class ReadOnlyVariableError(Error):
++    def __init__(self, value, variable_name):
++        super(ReadOnlyVariableError, self).__init__(value)
++        self.variable_name = variable_name
++
++
+ class RepoError(Error):
+     # :api
+     pass
+diff --git a/tests/conf/test_substitutions.py b/tests/conf/test_substitutions.py
+index b64533ff6..d8ac3c207 100644
+--- a/tests/conf/test_substitutions.py
++++ b/tests/conf/test_substitutions.py
+@@ -23,6 +23,8 @@ from __future__ import unicode_literals
+ import os
+ 
+ import dnf.conf
++from dnf.conf.substitutions import Substitutions
++from dnf.exceptions import ReadOnlyVariableError
+ 
+ import tests.support
+ 
+@@ -52,3 +54,33 @@ class SubstitutionsFromEnvironmentTest(tests.support.TestCase):
+             conf.substitutions.keys(),
+             ['basearch', 'arch', 'GENRE', 'EMPTY'])
+         self.assertEqual('opera', conf.substitutions['GENRE'])
++
++
++class SubstitutionsReadOnlyTest(tests.support.TestCase):
++    def test_set_readonly(self):
++        conf = dnf.conf.Conf()
++        variable_name = "releasever_major"
++        self.assertTrue(Substitutions.is_read_only(variable_name))
++        with self.assertRaises(ReadOnlyVariableError) as cm:
++            conf.substitutions["releasever_major"] = "1"
++        self.assertEqual(cm.exception.variable_name, "releasever_major")
++
++
++class SubstitutionsReleaseverTest(tests.support.TestCase):
++    def test_releasever_simple(self):
++        conf = dnf.conf.Conf()
++        conf.substitutions["releasever"] = "1.23"
++        self.assertEqual(conf.substitutions["releasever_major"], "1")
++        self.assertEqual(conf.substitutions["releasever_minor"], "23")
++
++    def test_releasever_major_only(self):
++        conf = dnf.conf.Conf()
++        conf.substitutions["releasever"] = "123"
++        self.assertEqual(conf.substitutions["releasever_major"], "123")
++        self.assertEqual(conf.substitutions["releasever_minor"], "")
++
++    def test_releasever_multipart(self):
++        conf = dnf.conf.Conf()
++        conf.substitutions["releasever"] = "1.23.45"
++        self.assertEqual(conf.substitutions["releasever_major"], "1")
++        self.assertEqual(conf.substitutions["releasever_minor"], "23.45")
+-- 
+2.49.0
+

@@ -1,0 +1,57 @@
+From 1a47a316ef937f5f04e5f82e64c5aef1db45c717 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Tue, 3 Jun 2025 22:43:46 +0000
+Subject: [PATCH 6/8] spec: package /etc/dnf/usr_drift_protected_paths.d
+
+---
+ dnf.spec                                           | 1 +
+ dnf/cli/cli.py                                     | 2 +-
+ etc/dnf/CMakeLists.txt                             | 1 +
+ etc/dnf/usr-drift-protected-paths.d/CMakeLists.txt | 1 +
+ 4 files changed, 4 insertions(+), 1 deletion(-)
+ create mode 100644 etc/dnf/usr-drift-protected-paths.d/CMakeLists.txt
+
+diff --git a/dnf.spec b/dnf.spec
+index 4abc0084b..da5d5fd28 100644
+--- a/dnf.spec
++++ b/dnf.spec
+@@ -301,6 +301,7 @@ popd
+ %dir %{confdir}/modules.defaults.d
+ %dir %{pluginconfpath}
+ %dir %{confdir}/protected.d
++%dir %{confdir}/usr-drift-protected-paths.d
+ %dir %{confdir}/vars
+ %dir %{confdir}/aliases.d
+ %exclude %{confdir}/aliases.d/zypper.conf
+diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
+index 74cf418c4..5602a07b1 100644
+--- a/dnf/cli/cli.py
++++ b/dnf/cli/cli.py
+@@ -262,7 +262,7 @@ class BaseCli(dnf.Base):
+                         logger.info(nevra)
+                         for protected_path in protected_paths:
+                             logger.info("  %s" % protected_path)
+-                    raise CliError(_("Operation aborted."))
++                    raise CliError(_("Operation aborted. Pass --setopt=usr_drift_protected_paths= to disable this check and proceed anyway."))
+ 
+             else:
+                 # Not a bootc transaction.
+diff --git a/etc/dnf/CMakeLists.txt b/etc/dnf/CMakeLists.txt
+index 6f0eec94e..7a60186d7 100644
+--- a/etc/dnf/CMakeLists.txt
++++ b/etc/dnf/CMakeLists.txt
+@@ -1,3 +1,4 @@
+ INSTALL (FILES "dnf-strict.conf" "dnf.conf" "automatic.conf" DESTINATION ${SYSCONFDIR}/dnf)
+ ADD_SUBDIRECTORY (aliases.d)
+ ADD_SUBDIRECTORY (protected.d)
++ADD_SUBDIRECTORY (usr-drift-protected-paths.d)
+diff --git a/etc/dnf/usr-drift-protected-paths.d/CMakeLists.txt b/etc/dnf/usr-drift-protected-paths.d/CMakeLists.txt
+new file mode 100644
+index 000000000..206b1b281
+--- /dev/null
++++ b/etc/dnf/usr-drift-protected-paths.d/CMakeLists.txt
+@@ -0,0 +1 @@
++INSTALL(DIRECTORY DESTINATION ${SYSCONFDIR}/dnf/usr-drift-protected-paths.d)
+-- 
+2.49.0
+

@@ -1,0 +1,37 @@
+From 72264e6ad00f90e7e261657f79dee7bae3ceb7e0 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Thu, 10 Apr 2025 20:18:44 +0000
+Subject: [PATCH 1/8] bootc tmt testing
+
+---
+ .packit.yaml | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+ create mode 100644 .packit.yaml
+
+diff --git a/.packit.yaml b/.packit.yaml
+new file mode 100644
+index 000000000..0738de205
+--- /dev/null
++++ b/.packit.yaml
+@@ -0,0 +1,18 @@
++# See the documentation for more information:
++# https://packit.dev/docs/configuration/
++
++specfile_path: dnf.spec
++
++jobs:
++  - job: copr_build
++    trigger: pull_request
++    targets:
++      - centos-stream-9-x86_64
++  - job: tests
++    trigger: pull_request
++    identifier: "dnf-tests"
++    targets:
++      - centos-stream-9-x86_64
++    fmf_url: https://github.com/evan-goode/ci-dnf-stack.git
++    fmf_ref: evan-goode/bootc
++    tmt_plan: "^/plans/integration/bootc-behave-dnf$"
+-- 
+2.49.0
+

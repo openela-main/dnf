@@ -1,0 +1,39 @@
+From d2d3770168e744eeace6c36b38f4ba0709c7b9c0 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ale=C5=A1=20Mat=C4=9Bj?= <amatej@redhat.com>
+Date: Mon, 28 Apr 2025 12:23:27 +0200
+Subject: [PATCH 1/2] Fix typo from previous commit (left over `]`)
+
+---
+ dnf/cli/option_parser.py | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/dnf/cli/option_parser.py b/dnf/cli/option_parser.py
+index a23c8553..6bb32c51 100644
+--- a/dnf/cli/option_parser.py
++++ b/dnf/cli/option_parser.py
+@@ -185,7 +185,7 @@ class OptionParser(argparse.ArgumentParser):
+                                  help=_("show {prog} version and exit").format(
+                                      prog=dnf.util.MAIN_PROG_UPPER))
+         general_grp.add_argument("--installroot", help=_("set install root"),
+-                                 metavar='PATH]')
++                                 metavar='PATH')
+         general_grp.add_argument("--nodocs", action="store_const", const=['nodocs'], dest='tsflags',
+                                  help=_("do not install documentations"))
+         general_grp.add_argument("--noplugins", action="store_false",
+@@ -194,11 +194,11 @@ class OptionParser(argparse.ArgumentParser):
+         general_grp.add_argument("--enableplugin", dest="enableplugin",
+                                  default=[], action=self._SplitCallback,
+                                  help=_("enable plugins by name"),
+-                                 metavar='PLUGIN]')
++                                 metavar='PLUGIN')
+         general_grp.add_argument("--disableplugin", dest="disableplugin",
+                                  default=[], action=self._SplitCallback,
+                                  help=_("disable plugins by name"),
+-                                 metavar='PLUGIN]')
++                                 metavar='PLUGIN')
+         general_grp.add_argument("--releasever", default=None,
+                                  help=_("override the value of $releasever"
+                                         " in config and repo files"))
+-- 
+2.48.1
+
