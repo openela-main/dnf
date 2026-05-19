@@ -1,0 +1,37 @@
+From b9c0a2ab768c624ad7746a175379358479df6f55 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Fri, 20 Mar 2026 16:28:14 -0400
+Subject: [PATCH 2/2] bootc: Call make_writable when
+ DeploymentUnlockedState.TRANSIENT
+
+Fixes a bug in 1afe4328334f27b45b5c4599b6f1e8ac69d465e4.
+bootc_system.make_writable should still be called even when the system
+is already in DeploymentUnlockedState.TRANSIENT, since the DNF mount
+namespace needs to be set up either way.
+---
+ dnf/cli/cli.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
+index f855c5eec..ce81f262b 100644
+--- a/dnf/cli/cli.py
++++ b/dnf/cli/cli.py
+@@ -235,6 +235,7 @@ class BaseCli(dnf.Base):
+                 bootc_system = dnf.util._BootcSystem()
+ 
+                 if not bootc_system.is_writable():
++                    bootc_system_needs_unlock = True
+                     if self.conf.persistence == "auto":
+                         logger.info(_("This bootc system is configured to be read-only. Pass --transient to "
+                                       "perform this transaction in a transient overlay which will reset when "
+@@ -247,7 +248,6 @@ class BaseCli(dnf.Base):
+                         logger.info(_("A transient overlay will be created on /usr that will be discarded on reboot. "
+                                       "Keep in mind that changes to /etc and /var will still persist, and packages "
+                                       "commonly modify these directories."))
+-                        bootc_system_needs_unlock = True
+                 self._persistence = libdnf.transaction.TransactionPersistence_TRANSIENT
+ 
+                 # Check whether the transaction modifies usr_drift_protected_paths
+-- 
+2.53.0
+

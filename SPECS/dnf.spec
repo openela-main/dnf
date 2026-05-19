@@ -73,7 +73,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:                 dnf
 Version:              4.14.0
-Release:              33%{?dist}
+Release:              34%{?dist}
 Summary:              %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:              GPLv2+
@@ -148,7 +148,9 @@ Patch66:              0066-Document-how-releasever-releasever_-major-minor-affe.
 Patch67:              0067-Move-releasever_minor-setter-docstring-to-the-correc.patch
 Patch68:              0068-automatic-Expand-email_to-in-command_email-emitter-t.patch
 Patch69:              0069-autoremove-warn-and-skip-dangling-protected-dependen.patch
-Patch70:              9999-change-bugtracker.diff
+Patch70:              0070-bootc-unlock-only-if-usr-is-read-only.patch
+Patch71:              0071-bootc-Call-make_writable-when-DeploymentUnlockedStat.patch
+Patch72:              9999-change-bugtracker.diff
 
 BuildArch:            noarch
 BuildRequires:        cmake
@@ -457,6 +459,9 @@ popd
 %changelog
 * Tue May 19 2026 Release Engineering <releng@openela.org> - 4.14.0
 - Add OpenELA bugtracker
+
+* Wed Mar 25 2026 Evan Goode <egoode@redhat.com> - 4.14.0-34
+- bootc: unlock only if /usr is read-only (RHEL-138512)
 
 * Wed Feb 11 2026 Ales Matej <amatej@redhat.com> - 4.14.0-33
 - autoremove: when a dangling protected dependency is found produce a wanrning
