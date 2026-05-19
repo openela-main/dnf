@@ -22,7 +22,7 @@
 %endif
 
 %if 0%{?rhel} == 9
-    %global hawkey_version 0.69.0-16
+    %global hawkey_version 0.69.0-18
 %endif
 
 # override dependencies for fedora 26
@@ -73,7 +73,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:                 dnf
 Version:              4.14.0
-Release:              31%{?dist}
+Release:              33%{?dist}
 Summary:              %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:              GPLv2+
@@ -146,7 +146,9 @@ Patch64:              0064-doc-Document-detect_releasevers-and-update-example.pa
 Patch65:              0065-tests-Patch-detect_releasevers-not-detect_releasever.patch
 Patch66:              0066-Document-how-releasever-releasever_-major-minor-affe.patch
 Patch67:              0067-Move-releasever_minor-setter-docstring-to-the-correc.patch
-Patch68:              9999-change-bugtracker.diff
+Patch68:              0068-automatic-Expand-email_to-in-command_email-emitter-t.patch
+Patch69:              0069-autoremove-warn-and-skip-dangling-protected-dependen.patch
+Patch70:              9999-change-bugtracker.diff
 
 BuildArch:            noarch
 BuildRequires:        cmake
@@ -453,8 +455,16 @@ popd
 # bootc subpackage does not include any files
 
 %changelog
-* Tue Nov 11 2025 Release Engineering <releng@openela.org> - 4.14.0
+* Tue May 19 2026 Release Engineering <releng@openela.org> - 4.14.0
 - Add OpenELA bugtracker
+
+* Wed Feb 11 2026 Ales Matej <amatej@redhat.com> - 4.14.0-33
+- autoremove: when a dangling protected dependency is found produce a wanrning
+  and skip it (RHEL-76112)
+
+* Fri Jan 09 2026 Petr Pisar <ppisar@redhat.com> - 4.14.0-32
+- automatic: Expand email_to in command_email emitter to individual arguments
+  (RHEL-94321)
 
 * Mon Jun 30 2025 Evan Goode <egoode@redhat.com> - 4.14.0-31
 - Introduce $releasever_major, $releasever_minor variables, shell-style
