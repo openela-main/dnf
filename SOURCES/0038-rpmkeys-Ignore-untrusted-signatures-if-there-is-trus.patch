@@ -1,0 +1,99 @@
+From c930603f8a62c53862ffc6fee8800610f79d6a1b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Petr=20P=C3=ADsa=C5=99?= <ppisar@redhat.com>
+Date: Wed, 21 Jan 2026 17:38:02 +0100
+Subject: [PATCH] rpmkeys: Ignore untrusted signatures if there is trusted one
+
+Upstream commit: 00fef9ad0d761eccf8d86580e031f442af9cd8ef
+
+With RPMv6 signatures, there can be multiple signatures attached to
+a single package. If some signatures are made with an algorithm
+disabled in a system-wide crypto policy (e.g. rsa4096 = "never" in
+/etc/crypto-policies/back-ends/rpm-sequoia.config), but other
+signatures are valid and trusted, so that the package is overall
+correctly signed:
+
+    # rpmkeys -v -K ./foo-0-1.fc43.noarch.rpm; echo $?
+    ./foo-0-1.fc43.noarch.rpm:
+	Header OpenPGP V4 EdDSA/SHA512 signature, key fingerprint: 111e11e164e61b51a1f62abe496099dbe2b145f3: OK
+	Header OpenPGP V4 RSA/SHA512 signature, key fingerprint: 9b02d881fe4185e9ea52e78888cd83a4b5e56945: NOTTRUSTED
+	Header SHA256 digest: OK
+	Payload SHA256 digest: OK
+    0
+
+DNF failed like this:
+
+    [...]
+     Is this ok [y/N]: y
+    Downloading Packages:
+    rsa-edsa                                                               633 kB/s | 648  B     00:00
+    Importing GPG key 0xE2B145F3:
+     Userid     : "test2 <test@localhost>"
+     Fingerprint: 111E 11E1 64E6 1B51 A1F6 2ABE 4960 99DB E2B1 45F3
+     From       : /root/repos/rsa-edsa/edsa.pub
+    Is this ok [y/N]: y
+    Key imported successfully
+    rsa-edsa                                                               1.6 MB/s | 1.6 kB     00:00
+    Importing GPG key 0xB5E56945:
+     Userid     : ""
+     Fingerprint: 9B02 D881 FE41 85E9 EA52 E788 88CD 83A4 B5E5 6945
+     From       : /root/repos/rsa-edsa/rsa.pub
+    Is this ok [y/N]: y
+    error: Certificate 88CD83A4B5E56945:
+      Policy rejects 88CD83A4B5E56945: Policy rejected asymmetric algorithm
+    Key import failed (code 2). Failing package is: foo-0-1.fc43.noarch
+     GPG Keys are configured as: file:///root/repos/rsa-edsa/edsa.pub, file:///root/repos/rsa-edsa/rsa.pub
+    Error: GPG check FAILED
+
+The cause was that an output of "rpmkeys -v -K" tool executed indirectly by
+dnf.rpm.miscutils.checkSig() was incorrectly parsed in _process_rpm_output()
+function. That function assumed that only one signature can exist and
+reported on any NOTTRUSTED record that the package is not trustfully
+signed.
+
+As a result, DNF attempted to (re)import all the signing keys. But
+importing a key with the disabled algorithm failed and DNF errored.
+
+This patch fixes parsing the rpmkeys output to ignore all untrusted
+signatures if there is at least one signature trusted.
+
+Resolve: https://issues.redhat.com/browse/RHEL-112730
+---
+ dnf/rpm/miscutils.py | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/dnf/rpm/miscutils.py b/dnf/rpm/miscutils.py
+index 1b85301da..61b0c2da5 100644
+--- a/dnf/rpm/miscutils.py
++++ b/dnf/rpm/miscutils.py
+@@ -39,7 +39,7 @@ def _process_rpm_output(data):
+     # last newline.
+     if len(data) < 3 or data[0] != b'-:' or data[-1]:
+         return 2
+-    seen_sig, missing_key, not_trusted, not_signed = False, False, False, False
++    trusted_sig, missing_key, not_trusted, not_signed = False, False, False, False
+     for i in data[1:-1]:
+         if b': BAD' in i:
+             return 2
+@@ -49,12 +49,16 @@ def _process_rpm_output(data):
+             not_trusted = True
+         elif i.endswith(b': NOTFOUND'):
+             not_signed = True
++        # Some rpmkeys versions print Signature, some signature, accept both.
++        elif i.endswith(b': OK') and b'ignature,' in i:
++            trusted_sig = True
+         elif not i.endswith(b': OK'):
+             return 2
+-    if not_trusted:
+-        return 3
+-    elif missing_key:
++    if missing_key:
+         return 1
++    elif not trusted_sig and not_trusted:
++        # Do not report untrusted signatures if there is a trusted one
++        return 3
+     elif not_signed:
+         return 4
+     # we still check return code, so this is safe
+-- 
+2.53.0
+

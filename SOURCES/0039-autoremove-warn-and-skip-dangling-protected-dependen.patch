@@ -1,0 +1,43 @@
+From 93a1bdc09ad6ef345cf8cecc059b649ee2ccbf40 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ale=C5=A1=20Mat=C4=9Bj?= <amatej@redhat.com>
+Date: Mon, 26 Jan 2026 12:29:11 +0100
+Subject: [PATCH 1/2] autoremove: warn and skip dangling protected dependencies
+
+Requires new libdnf 0.76.0 API.
+---
+ dnf/base.py | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/dnf/base.py b/dnf/base.py
+index 7117dbe3..1d6ae6e2 100644
+--- a/dnf/base.py
++++ b/dnf/base.py
+@@ -2311,9 +2311,23 @@ class Base(object):
+                 logger.warning(_('No packages marked for removal.'))
+ 
+         else:
+-            pkgs = self.sack.query()._unneeded(self.history.swdb,
++            unneeded_pkgs = self.sack.query()._unneeded(self.history.swdb,
+                                                debug_solver=self.conf.debug_solver)
+-            for pkg in pkgs:
++
++            protected = self.sack.query().installed().filterm(name=self.conf.protected_packages)
++            protected_found = False
++            for pkg in protected:
++                if pkg in unneeded_pkgs:
++                    msg = _('Unneeded protected package: %s (and its dependencies) cannot be removed, '
++                            'either mark it as user-installed or change protected_packages configuration option.')
++                    logger.warning(msg, pkg)
++                    protected_found = True
++
++            if protected_found:
++                unneeded_pkgs = self.sack.query()._unneeded_extra_userinstalled(self.history.swdb, protected,
++                                                   debug_solver=self.conf.debug_solver)
++
++            for pkg in unneeded_pkgs:
+                 self.package_remove(pkg)
+ 
+     def remove(self, pkg_spec, reponame=None, forms=None):
+-- 
+2.53.0
+

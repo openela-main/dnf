@@ -24,7 +24,7 @@
 %endif
 
 %if 0%{?rhel} == 10
-    %global hawkey_version 0.73.1-11
+    %global hawkey_version 0.73.1-14
 %endif
 
 # override dependencies for fedora 26
@@ -72,7 +72,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:           dnf
 Version:        4.20.0
-Release:        18%{?dist}
+Release:        22%{?dist}
 Summary:        %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:        GPL-2.0-or-later AND GPL-1.0-only
@@ -114,6 +114,11 @@ Patch33:        0033-Obsolete-RHEL-9-only-multisig-DNF-plugin.patch
 Patch34:        0034-Add-deprecation-warning-for-module-commands.patch
 Patch35:        0035-Add-modularity-deprecation-warning-to-doc-pages.patch
 Patch36:        0036-automatic-Fix-detecting-releasever_minor.patch
+Patch37:        0037-automatic-Expand-email_to-in-command_email-emitter-t.patch
+Patch38:        0038-rpmkeys-Ignore-untrusted-signatures-if-there-is-trus.patch
+Patch39:        0039-autoremove-warn-and-skip-dangling-protected-dependen.patch
+Patch40:        0040-bootc-unlock-only-if-usr-is-read-only.patch
+Patch41:        0041-bootc-Call-make_writable-when-DeploymentUnlockedStat.patch
 
 BuildArch:      noarch
 BuildRequires:  cmake
@@ -475,6 +480,20 @@ popd
 # bootc subpackage does not include any files
 
 %changelog
+* Wed Mar 25 2026 Evan Goode <egoode@redhat.com> - 4.20.0-22
+- bootc: unlock only if /usr is read-only (RHEL-145780)
+
+* Mon Feb 16 2026 Ales Matej <amatej@redhat.com> - 4.20.0-21
+- autoremove: when a dangling protected dependency is found produce a warning
+  and skip it (RHEL-128445)
+
+* Fri Jan 23 2026 Petr Pisar <ppisar@redhat.com> - 4.20.0-20
+- Ignore untrusted signatures if there is trusted one (RHEL-112730)
+
+* Fri Jan 09 2026 Petr Pisar <ppisar@redhat.com> - 4.20.0-19
+- automatic: Expand email_to in command_email emitter to individual arguments
+  (RHEL-94331)
+
 * Tue Jul 29 2025 Petr Pisar <ppisar@redhat.com> - 4.20.0-18
 - Fix detecting releasever_minor in dnf-automatic (RHEL-106141)
 

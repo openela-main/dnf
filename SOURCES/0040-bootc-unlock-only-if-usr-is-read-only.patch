@@ -1,0 +1,57 @@
+From c1c66613c04a476a3b85582ae5214a3f9301d485 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Mon, 1 Dec 2025 13:40:26 -0500
+Subject: [PATCH 1/2] bootc: unlock only if /usr is read-only
+
+DNF should only run `ostree admin unlock --transient` if `/usr` is
+actually read-only. `/usr` may be writable via OSTree's `root.transient =
+true` even if the `ostree admin status` is not transient.
+
+Resolves: https://redhat.atlassian.net/browse/RHEL-145780
+---
+ dnf/cli/cli.py | 4 +++-
+ dnf/util.py    | 2 +-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/dnf/cli/cli.py b/dnf/cli/cli.py
+index d4bf811c1..07cc62cb1 100644
+--- a/dnf/cli/cli.py
++++ b/dnf/cli/cli.py
+@@ -225,6 +225,7 @@ class BaseCli(dnf.Base):
+             # Handle bootc transactions. `--transient` must be specified if
+             # /usr is not already writeable.
+             bootc_system = None
++            bootc_system_needs_unlock = False
+             if is_bootc_transaction:
+                 if self.conf.persistence == "persist":
+                     logger.info(_("Persistent transactions aren't supported on bootc systems."))
+@@ -246,6 +247,7 @@ class BaseCli(dnf.Base):
+                         logger.info(_("A transient overlay will be created on /usr that will be discarded on reboot. "
+                                       "Keep in mind that changes to /etc and /var will still persist, and packages "
+                                       "commonly modify these directories."))
++                        bootc_system_needs_unlock = True
+                 self._persistence = libdnf.transaction.TransactionPersistence_TRANSIENT
+ 
+                 # Check whether the transaction modifies usr_drift_protected_paths
+@@ -276,7 +278,7 @@ class BaseCli(dnf.Base):
+                 if self.conf.assumeno or not self.output.userconfirm():
+                     raise CliError(_("Operation aborted."))
+ 
+-            if bootc_system:
++            if bootc_system and bootc_system_needs_unlock:
+                 bootc_system.make_writable()
+         else:
+             logger.info(_('Nothing to do.'))
+diff --git a/dnf/util.py b/dnf/util.py
+index eb987bb8a..e058bc187 100644
+--- a/dnf/util.py
++++ b/dnf/util.py
+@@ -749,4 +749,4 @@ class _BootcSystem:
+             # read-only. Set up a mount namespace for DNF.
+             self._set_up_mountns()
+ 
+-        assert os.access(self.usr, os.W_OK)
++        assert self.is_writable()
+-- 
+2.53.0
+
