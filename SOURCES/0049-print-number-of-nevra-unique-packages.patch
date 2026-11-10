@@ -1,0 +1,103 @@
+From 64d9496ca8f4ead9f99b0c72f9ce04d193ad4d6e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ale=C5=A1=20Mat=C4=9Bj?= <amatej@redhat.com>
+Date: Thu, 30 Apr 2026 08:26:03 +0200
+Subject: [PATCH 1/2] repoinfo/repolist -v: print number of nevra unique
+ packages
+
+---
+ dnf/cli/commands/repolist.py | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/dnf/cli/commands/repolist.py b/dnf/cli/commands/repolist.py
+index 57c05e28..98f42152 100644
+--- a/dnf/cli/commands/repolist.py
++++ b/dnf/cli/commands/repolist.py
+@@ -60,13 +60,6 @@ def _repo_match(repo, patterns):
+     return False
+ 
+ 
+-def _repo_size(sack, repo):
+-    ret = 0
+-    for pkg in sack.query(flags=hawkey.IGNORE_EXCLUDES).filterm(reponame__eq=repo.id):
+-        ret += pkg._size
+-    return dnf.cli.format.format_number(ret)
+-
+-
+ class RepoListCommand(commands.Command):
+     """A class containing methods needed by the cli to execute the
+     repolist command.
+@@ -143,7 +136,13 @@ class RepoListCommand(commands.Command):
+                     ui_enabled = ehibeg + _('enabled') + hiend
+                     ui_endis_wid = exact_width(_('enabled'))
+                 if verbose or self.opts.command == 'repoinfo':
+-                    ui_size = _repo_size(self.base.sack, repo)
++                    size = 0
++                    unique_pkgs = set()
++                    for pkg in self.base.sack.query(flags=hawkey.IGNORE_EXCLUDES).filterm(reponame__eq=repo.id):
++                        size += pkg._size
++                        unique_pkgs.add(str(pkg))
++                    ui_size = dnf.cli.format.format_number(size)
++                    ui_num_unique = dnf.cli.format.format_number(len(unique_pkgs))
+             else:
+                 enabled = False
+                 if arg == 'enabled' or (arg == 'enabled-default' and not extcmds):
+@@ -193,6 +192,7 @@ class RepoListCommand(commands.Command):
+                             dnf.util.normalize_time(repo._repo.getMaxTimestamp())),
+                         self.output.fmtKeyValFill(_("Repo-pkgs          : "), ui_num),
+                         self.output.fmtKeyValFill(_("Repo-available-pkgs: "), ui_num_available),
++                        self.output.fmtKeyValFill(_("Repo-unique-NEVRAs : "), ui_num_unique),
+                         self.output.fmtKeyValFill(_("Repo-size          : "), ui_size)]
+ 
+                 if repo.metalink:
+-- 
+2.55.0
+
+
+From c08633e5aa0e6ff7a46e247b5f57b946203930f1 Mon Sep 17 00:00:00 2001
+From: Marek Blaha <mblaha@redhat.com>
+Date: Thu, 6 Aug 2026 15:00:35 +0000
+Subject: [PATCH 2/2] repolist: Format number of unique packages consistently
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The number of packages should be displayed exactly, not using kilo-,
+mega-, or other abbreviated units.
+
+Before the patch:
+❯ dnf repoinfo fedora
+...
+Repo-pkgs          : 77,664
+Repo-available-pkgs: 77,664
+Repo-unique-NEVRAs : 76 k
+...
+
+With the patch:
+❯ dnf repoinfo fedora
+...
+Repo-pkgs          : 77,664
+Repo-available-pkgs: 77,664
+Repo-unique-NEVRAs : 77,664
+...
+
+Signed-off-by: Marek Blaha <mblaha@redhat.com>
+---
+ dnf/cli/commands/repolist.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/dnf/cli/commands/repolist.py b/dnf/cli/commands/repolist.py
+index 98f42152..686c4d7f 100644
+--- a/dnf/cli/commands/repolist.py
++++ b/dnf/cli/commands/repolist.py
+@@ -142,7 +142,7 @@ class RepoListCommand(commands.Command):
+                         size += pkg._size
+                         unique_pkgs.add(str(pkg))
+                     ui_size = dnf.cli.format.format_number(size)
+-                    ui_num_unique = dnf.cli.format.format_number(len(unique_pkgs))
++                    ui_num_unique = _num2ui_num(len(unique_pkgs))
+             else:
+                 enabled = False
+                 if arg == 'enabled' or (arg == 'enabled-default' and not extcmds):
+-- 
+2.55.0
+

@@ -1,0 +1,64 @@
+From 5759ab2835f585b8d2143a712a38eb3ab967123d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Petr=20P=C3=ADsa=C5=99?= <ppisar@redhat.com>
+Date: Wed, 19 Nov 2025 16:05:25 +0100
+Subject: [PATCH] Preserve ACL when rotating logs
+
+Upstream commit: 4324b297da2fd6a15670241398a31e7f462e44e4
+
+When DNF rotated /var/log/dnf.log, it preserved a file mode, but it
+lost an access control list:
+
+    # getfacl -c /var/log/dnf.log
+    getfacl: Removing leading '/' from absolute path names
+    user::rw-
+    user:root:r--
+    group::r--
+    mask::r--
+    other::r--
+
+    # dnf4 --setopt log_rotate=4 --setopt log_size=1 upgrade --assumeno
+
+    # getfacl -c /var/log/dnf.log
+    getfacl: Removing leading '/' from absolute path names
+    user::rw-
+    group::r--
+    other::r--
+
+This patch fixes it by copying an extended attribute which stores the access
+control list. (Python does not have an interface for handling the access
+control lists.)
+
+Resolve: #2279
+Resolve: https://redhat.atlassian.net/browse/RHEL-123670
+---
+ dnf/logging.py | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/dnf/logging.py b/dnf/logging.py
+index ef0b25f33..7dc655932 100644
+--- a/dnf/logging.py
++++ b/dnf/logging.py
+@@ -125,10 +125,19 @@ class MultiprocessRotatingFileHandler(logging.handlers.RotatingFileHandler):
+             try:
+                 if self.shouldRollover(record):
+                     with self.rotate_lock:
+-                        # Do rollover while preserving the mode of the new log file
++                        # Do rollover while preserving the mode and ACL of the new log file
+                         mode = os.stat(self.baseFilename).st_mode
++                        acl = None
++                        try:
++                            acl = os.getxattr(self.baseFilename, "system.posix_acl_access")
++                        except:
++                            # The extended attribute does not exist or the
++                            # file system does not support them.
++                            pass
+                         self.doRollover()
+                         os.chmod(self.baseFilename, mode)
++                        if acl is not None:
++                            os.setxattr(self.baseFilename, "system.posix_acl_access", acl)
+                 logging.FileHandler.emit(self, record)
+                 return
+             except (dnf.exceptions.ProcessLockError, dnf.exceptions.ThreadLockError):
+-- 
+2.53.0
+

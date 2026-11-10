@@ -1,0 +1,59 @@
+From eb465e31e4c92b6f3a54e96e097faa816957e7af Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ale=C5=A1=20Mat=C4=9Bj?= <amatej@redhat.com>
+Date: Wed, 8 Jul 2026 13:16:43 +0200
+Subject: [PATCH 1/4] Add `FileLock` for read/write and blocking/non blocking
+ locks
+
+ProcessLock doesn't support read only locks and it works differently: it
+effectively achieves the locking by storing a PID, flock is only used to
+guard writing the PID.
+---
+ dnf/lock.py | 35 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
+
+diff --git a/dnf/lock.py b/dnf/lock.py
+index 6817aac9..cb189c35 100644
+--- a/dnf/lock.py
++++ b/dnf/lock.py
+@@ -146,3 +146,38 @@ class ProcessLock(object):
+         if self.count == 1:
+             os.unlink(self.target)
+         self._unlock_thread()
++
++
++class FileLock(object):
++    """
++    A file lock with read/write access and blocking/non blocking mode.
++    """
++
++    def __init__(self, target, description, blocking=False, read=False):
++        self.blocking = blocking
++        self.read = read
++        self.description = description
++        self.target = target
++        self.fd = None
++
++    def __enter__(self):
++        dnf.util.ensure_dir(os.path.dirname(self.target))
++        self.fd = os.open(self.target, os.O_CREAT | os.O_RDWR, 0o644)
++        flags = fcntl.LOCK_SH if self.read else fcntl.LOCK_EX
++        if not self.blocking:
++            flags |= fcntl.LOCK_NB
++        try:
++            fcntl.flock(self.fd, flags)
++        except OSError as e:
++            os.close(self.fd)
++            self.fd = None
++            if e.errno == errno.EWOULDBLOCK:
++                msg = '%s already locked' % self.description
++                raise ProcessLockError(msg, -1)
++            raise
++
++    def __exit__(self, *exc_args):
++        if self.fd is not None:
++            fcntl.flock(self.fd, fcntl.LOCK_UN)
++            os.close(self.fd)
++            self.fd = None
+-- 
+2.54.0
+

@@ -1,0 +1,38 @@
+From 104e0b0f983429c09e8ed3c8644156b019234567 Mon Sep 17 00:00:00 2001
+From: Evan Goode <mail@evangoo.de>
+Date: Mon, 9 Mar 2026 22:23:50 -0400
+Subject: [PATCH] history info: Fix Persistence display for interval queries
+
+print_persistence() took a persistence parameter but compared against
+old.persistence (the property on the transaction object) instead. For
+merged transactions, old.persistence returns a list, so comparisons
+against scalar enum values always failed, displaying 'Unknown'.
+
+Use the function parameter instead of old.persistence.
+
+For: https://github.com/rpm-software-management/libdnf/issues/1744
+
+Assisted-by: Claude Opus 4.6
+---
+ dnf/cli/output.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/dnf/cli/output.py b/dnf/cli/output.py
+index 5238b356e..bae870e0b 100644
+--- a/dnf/cli/output.py
++++ b/dnf/cli/output.py
+@@ -1778,9 +1778,9 @@ Transaction Summary
+                 print(_("Command Line   :"), old.cmdline)
+ 
+         def print_persistence(persistence):
+-            if old.persistence == libdnf.transaction.TransactionPersistence_PERSIST:
++            if persistence == libdnf.transaction.TransactionPersistence_PERSIST:
+                 persistence_str = "Persist"
+-            elif old.persistence == libdnf.transaction.TransactionPersistence_TRANSIENT:
++            elif persistence == libdnf.transaction.TransactionPersistence_TRANSIENT:
+                 persistence_str = "Transient"
+             else:
+                 persistence_str = "Unknown"
+-- 
+2.53.0
+

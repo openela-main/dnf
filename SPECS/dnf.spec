@@ -72,7 +72,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:           dnf
 Version:        4.20.0
-Release:        22%{?dist}
+Release:        28%{?dist}
 Summary:        %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:        GPL-2.0-or-later AND GPL-1.0-only
@@ -119,6 +119,15 @@ Patch38:        0038-rpmkeys-Ignore-untrusted-signatures-if-there-is-trus.patch
 Patch39:        0039-autoremove-warn-and-skip-dangling-protected-dependen.patch
 Patch40:        0040-bootc-unlock-only-if-usr-is-read-only.patch
 Patch41:        0041-bootc-Call-make_writable-when-DeploymentUnlockedStat.patch
+Patch42:        0042-Preserve-ACL-when-rotating-logs.patch
+Patch43:        0043-history-info-Fix-Persistence-display-for-interval-qu.patch
+Patch44:        0044-automatic-Add-systemd-inhibitor-lock.patch
+Patch45:        0045-Add-FileLock-for-read-write-and-blocking-non-blockin.patch
+Patch46:        0046-Generalize-_BoolDefault-to-just-_Default-allow-choic.patch
+Patch47:        0047-Add-clean-command-lock-demand.patch
+Patch48:        0048-Configure-demands.clean_command_lock-for-commands-th.patch
+Patch49:        0049-print-number-of-nevra-unique-packages.patch
+Patch50:        0050-change-updateinfo-documentation.patch
 
 BuildArch:      noarch
 BuildRequires:  cmake
@@ -480,6 +489,25 @@ popd
 # bootc subpackage does not include any files
 
 %changelog
+* Thu Aug 14 2026 Fellipe Henrique <fpedrosaj@redhat.com> - 4.20.0-28
+- updateinfo: change documentation, adding more information summar, list and info
+  parameters (RHEL-72476)
+
+* Fri Aug 07 2026 Marek Blaha <mblaha@redhat.com> - 4.20.0-27
+- repoinfo: Print number of nevra unique packages (RHEL-78637)
+
+* Tue Jul 14 2026 Ales Matej <amatej@redhat.com> - 4.20.0-26
+- Add dedicated lock for clean command (RHEL-128440)
+
+* Wed Jul 08 2026 Marek Blaha <mblaha@redhat.com> - 4.20.0-25
+- automatic: Add systemd inhibitor lock (RHEL-111536)
+
+* Wed Apr 22 2026 Evan Goode <egoode@redhat.com> - 4.20.0-24
+- history info: Fix Persistence display for interval queries (RHEL-154738)
+
+* Wed Mar 25 2026 Petr Pisar <ppisar@redhat.com> - 4.20.0-23
+- Preserve ACL when rotating logs (RHEL-123670)
+
 * Wed Mar 25 2026 Evan Goode <egoode@redhat.com> - 4.20.0-22
 - bootc: unlock only if /usr is read-only (RHEL-145780)
 

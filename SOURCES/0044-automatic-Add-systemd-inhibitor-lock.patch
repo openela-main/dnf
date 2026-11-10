@@ -1,0 +1,154 @@
+From 08a3d5d13142c79083e5cd6043eef8423c19f2c9 Mon Sep 17 00:00:00 2001
+From: Marek Blaha <mblaha@redhat.com>
+Date: Thu, 28 May 2026 14:21:48 +0000
+Subject: [PATCH] automatic: Add systemd inhibitor lock
+
+dnf-automatic now acquires a systemd inhibitor lock during the transaction
+phase to prevent system shutdown or sleep from interrupting the process,
+which could leave the system in an inconsistent state.
+
+The implementation is opt-out via new `systemd_inhibit` option in the
+[commands] section.
+
+For: https://redhat.atlassian.net/browse/RHEL-111536
+
+Original upstream commit: e18732b5
+---
+ dnf.spec               |  1 +
+ dnf/automatic/main.py  | 53 +++++++++++++++++++++++++++++++++++-------
+ doc/automatic.rst      |  5 ++++
+ etc/dnf/automatic.conf |  3 +++
+ 4 files changed, 53 insertions(+), 9 deletions(-)
+
+diff --git a/dnf.spec b/dnf.spec
+index 770c70c1..ecf18454 100644
+--- a/dnf.spec
++++ b/dnf.spec
+@@ -195,6 +195,7 @@ Python 3 interface to DNF.
+ Summary:        %{pkg_summary} - automated upgrades
+ BuildRequires:  systemd
+ Requires:       python3-%{name} = %{version}-%{release}
++Recommends:     (python3-dbus if systemd)
+ %{?systemd_requires}
+ 
+ %description automatic
+diff --git a/dnf/automatic/main.py b/dnf/automatic/main.py
+index 1a1e1cf0..c06c7d09 100644
+--- a/dnf/automatic/main.py
++++ b/dnf/automatic/main.py
+@@ -23,6 +23,7 @@ from __future__ import print_function
+ from __future__ import unicode_literals
+ 
+ import argparse
++import contextlib
+ import logging
+ import os
+ import random
+@@ -46,6 +47,36 @@ import libdnf.conf
+ logger = logging.getLogger('dnf')
+ 
+ 
++@contextlib.contextmanager
++def systemd_inhibit():
++    """Acquire a systemd inhibitor lock to block system shutdown/sleep.
++    """
++    fd = None
++    try:
++        import dbus
++    except ImportError:
++        logger.debug(_("dbus module is not available, skipping systemd inhibitor lock"))
++        yield
++        return
++
++    try:
++        bus = dbus.SystemBus()
++        proxy = bus.get_object("org.freedesktop.login1",
++                               "/org/freedesktop/login1")
++        manager = dbus.Interface(proxy, "org.freedesktop.login1.Manager")
++        fd = manager.Inhibit("idle:sleep:shutdown",
++                            "dnf-automatic",
++                            "Transaction running",
++                            "block")
++    except dbus.DBusException as e:
++        logger.debug(_("Failed to acquire systemd inhibitor lock: %s"), e)
++    try:
++        yield
++    finally:
++        if fd is not None:
++            os.close(fd.take())
++
++
+ def build_emitters(conf):
+     emitters = dnf.util.MultiCallList([])
+     system_name = conf.emitters.system_name
+@@ -190,6 +221,7 @@ class CommandsConfig(Config):
+                         libdnf.conf.VectorString(['default', 'security'])))
+         self.add_option('random_sleep', libdnf.conf.OptionNumberInt32(300))
+         self.add_option('network_online_timeout', libdnf.conf.OptionNumberInt32(60))
++        self.add_option('systemd_inhibit', libdnf.conf.OptionBool(True))
+         self.add_option('reboot', libdnf.conf.OptionEnumString('never',
+                         libdnf.conf.VectorString(['never', 'when-changed', 'when-needed'])))
+         self.add_option('reboot_command', libdnf.conf.OptionString(
+@@ -363,17 +395,20 @@ def main(args):
+                 emitters.commit()
+                 return 0
+ 
+-            gpgsigcheck(base, trans.install_set)
+-            base.do_transaction()
++            inhibit = systemd_inhibit() if conf.commands.systemd_inhibit \
++                else contextlib.nullcontext()
++            with inhibit:
++                gpgsigcheck(base, trans.install_set)
++                base.do_transaction()
+ 
+-            # In case of no global error occurred within the transaction,
+-            # we need to check state of individual transaction items.
+-            for tsi in trans:
+-                if tsi.state == libdnf.transaction.TransactionItemState_ERROR:
+-                    raise dnf.exceptions.Error(_('Transaction failed'))
++                # In case of no global error occurred within the transaction,
++                # we need to check state of individual transaction items.
++                for tsi in trans:
++                    if tsi.state == libdnf.transaction.TransactionItemState_ERROR:
++                        raise dnf.exceptions.Error(_('Transaction failed'))
+ 
+-            emitters.notify_applied()
+-            emitters.commit()
++                emitters.notify_applied()
++                emitters.commit()
+ 
+             if (conf.commands.reboot == 'when-changed' or
+                (conf.commands.reboot == 'when-needed' and base.reboot_needed())):
+diff --git a/doc/automatic.rst b/doc/automatic.rst
+index d342c957..cab1107a 100644
+--- a/doc/automatic.rst
++++ b/doc/automatic.rst
+@@ -90,6 +90,11 @@ Setting the mode of operation of the program.
+ 
+     What kind of upgrades to look at. ``default`` signals looking for all available updates, ``security`` only those with an issued security advisory.
+ 
++``systemd_inhibit``
++    boolean, default: True
++
++    Whether to block system shutdown while applying package updates. When enabled, dnf-automatic acquires a systemd inhibitor lock during the transaction phase to prevent scheduled reboots or system shutdown from interrupting package installation. The lock is automatically released when the transaction completes. If systemd-logind is unavailable (e.g., in containers), this setting has no effect. Set to ``False`` to disable if the inhibitor conflicts with your maintenance workflows.
++
+ ``reboot``
+     either one of ``never``, ``when-changed``, ``when-needed``, default: ``never``
+ 
+diff --git a/etc/dnf/automatic.conf b/etc/dnf/automatic.conf
+index f60f75b9..dd27e798 100644
+--- a/etc/dnf/automatic.conf
++++ b/etc/dnf/automatic.conf
+@@ -9,6 +9,9 @@ random_sleep = 0
+ # connect to remote repositories.
+ network_online_timeout = 60
+ 
++# Whether to block system shutdown while applying package updates.
++systemd_inhibit = yes
++
+ # To just receive updates use dnf-automatic-notifyonly.timer
+ 
+ # Whether updates should be downloaded when they are available, by
+-- 
+2.54.0
+
