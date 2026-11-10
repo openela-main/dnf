@@ -1,0 +1,200 @@
+From ac21a60646f98d2391900f57b2cfb5af4f745f48 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ale=C5=A1=20Mat=C4=9Bj?= <amatej@redhat.com>
+Date: Wed, 8 Jul 2026 13:47:31 +0200
+Subject: [PATCH 3/4] Add clean command lock demand
+
+---
+ dnf/cli/demand.py        | 14 +++++++
+ dnf/cli/main.py          | 84 +++++++++++++++++++++++-----------------
+ dnf/lock.py              |  5 +++
+ tests/cli/test_demand.py |  2 +
+ 4 files changed, 70 insertions(+), 35 deletions(-)
+
+diff --git a/dnf/cli/demand.py b/dnf/cli/demand.py
+index ac19930b..2dc3a3d4 100644
+--- a/dnf/cli/demand.py
++++ b/dnf/cli/demand.py
+@@ -20,6 +20,15 @@
+ 
+ from __future__ import unicode_literals
+ 
++from enum import Enum
++
++
++class CleanCommandLock(Enum):
++    """Clean command lock modes. :api"""
++    NONE = 0
++    READ = 1
++    WRITE = 2
++
+ 
+ class _Default(object):
+     def __init__(self, default, choices=None):
+@@ -70,3 +79,8 @@ class DemandSheet(object):
+     # repositories packages (e.g. versionlock).
+     # If it stays None, the demands.resolving is used as a fallback.
+     plugin_filtering_enabled = _BoolDefault(None)
++
++    # Determines if/how to lock the clean command lock.
++    # This lock is used to ensure clean command (which uses WRITE mode) running concurrently
++    # with another dnf process doesn't delete required data (packages).
++    clean_command_lock = _Default(CleanCommandLock.NONE, tuple(CleanCommandLock))
+diff --git a/dnf/cli/main.py b/dnf/cli/main.py
+index 2a7f92d5..fcb62245 100644
+--- a/dnf/cli/main.py
++++ b/dnf/cli/main.py
+@@ -24,6 +24,7 @@ from __future__ import absolute_import
+ from __future__ import unicode_literals
+ from dnf.conf import Conf
+ from dnf.cli.cli import Cli
++from dnf.cli.demand import CleanCommandLock
+ from dnf.cli.option_parser import OptionParser
+ from dnf.i18n import ucd
+ from dnf.cli.utils import show_lock_owner
+@@ -33,6 +34,7 @@ import dnf.cli
+ import dnf.cli.cli
+ import dnf.cli.option_parser
+ import dnf.exceptions
++import dnf.lock
+ import dnf.i18n
+ import dnf.logging
+ import dnf.util
+@@ -43,6 +45,7 @@ import logging
+ import os
+ import os.path
+ import sys
++from contextlib import nullcontext
+ 
+ logger = logging.getLogger("dnf")
+ 
+@@ -118,45 +121,56 @@ def cli_run(cli, base):
+     else:
+         f.close()
+ 
+-    try:
+-        cli.run()
+-    except dnf.exceptions.LockError:
+-        raise
+-    except (IOError, OSError) as e:
+-        return ex_IOError(e)
++    lock = None
++    if cli.demands.clean_command_lock == CleanCommandLock.NONE:
++        lock = nullcontext()
++    elif cli.demands.clean_command_lock == CleanCommandLock.READ:
++        lock = dnf.lock.build_clean_command_lock(base.conf.cachedir, base.conf.exit_on_lock, True)
++    elif cli.demands.clean_command_lock == CleanCommandLock.WRITE:
++        lock = dnf.lock.build_clean_command_lock(base.conf.cachedir, base.conf.exit_on_lock, False)
++    else:
++        raise RuntimeError('Invalid demands.clean_command_lock: %s' % cli.demands.clean_command_lock)
+ 
+-    if cli.demands.resolving:
++    with lock:
+         try:
+-            ret = resolving(cli, base)
+-        except dnf.exceptions.DepsolveError as e:
+-            ex_Error(e)
+-            msg = ""
+-            if not cli.demands.allow_erasing and base._goal.problem_conflicts(available=True):
+-                msg += _("try to add '{}' to command line to replace conflicting "
+-                         "packages").format("--allowerasing")
+-            if cli.base.conf.strict:
+-                if not msg:
+-                    msg += _("try to add '{}' to skip uninstallable packages").format(
+-                        "--skip-broken")
+-                else:
+-                    msg += _(" or '{}' to skip uninstallable packages").format("--skip-broken")
+-            if cli.base.conf.best:
+-                prio = cli.base.conf._get_priority("best")
+-                if prio <= dnf.conf.PRIO_MAINCONFIG:
++            cli.run()
++        except dnf.exceptions.LockError:
++            raise
++        except (IOError, OSError) as e:
++            return ex_IOError(e)
++
++        if cli.demands.resolving:
++            try:
++                ret = resolving(cli, base)
++            except dnf.exceptions.DepsolveError as e:
++                ex_Error(e)
++                msg = ""
++                if not cli.demands.allow_erasing and base._goal.problem_conflicts(available=True):
++                    msg += _("try to add '{}' to command line to replace conflicting "
++                             "packages").format("--allowerasing")
++                if cli.base.conf.strict:
+                     if not msg:
+-                        msg += _("try to add '{}' to use not only best candidate packages").format(
+-                            "--nobest")
++                        msg += _("try to add '{}' to skip uninstallable packages").format(
++                            "--skip-broken")
+                     else:
+-                        msg += _(" or '{}' to use not only best candidate packages").format(
+-                            "--nobest")
+-            if msg:
+-                logger.info("({})".format(msg))
+-            raise
+-        if ret:
+-            return ret
+-
+-    cli.command.run_transaction()
+-    return cli.demands.success_exit_status
++                        msg += _(" or '{}' to skip uninstallable packages").format("--skip-broken")
++                if cli.base.conf.best:
++                    prio = cli.base.conf._get_priority("best")
++                    if prio <= dnf.conf.PRIO_MAINCONFIG:
++                        if not msg:
++                            msg += _("try to add '{}' to use not only best candidate packages").format(
++                                "--nobest")
++                        else:
++                            msg += _(" or '{}' to use not only best candidate packages").format(
++                                "--nobest")
++                if msg:
++                    logger.info("({})".format(msg))
++                raise
++            if ret:
++                return ret
++
++        cli.command.run_transaction()
++        return cli.demands.success_exit_status
+ 
+ 
+ def resolving(cli, base):
+diff --git a/dnf/lock.py b/dnf/lock.py
+index cb189c35..aae8a51b 100644
+--- a/dnf/lock.py
++++ b/dnf/lock.py
+@@ -63,6 +63,11 @@ def build_log_lock(logdir, exit_on_lock):
+                        'log', not exit_on_lock)
+ 
+ 
++def build_clean_command_lock(cachedir, exit_on_lock, read):
++    return FileLock(os.path.join(_fit_lock_dir(cachedir), 'clean_command.lock'),
++                     'clean command', not exit_on_lock, read)
++
++
+ class ProcessLock(object):
+     def __init__(self, target, description, blocking=False):
+         self.blocking = blocking
+diff --git a/tests/cli/test_demand.py b/tests/cli/test_demand.py
+index fc9cfcec..7f99100a 100644
+--- a/tests/cli/test_demand.py
++++ b/tests/cli/test_demand.py
+@@ -21,6 +21,7 @@ from __future__ import absolute_import
+ from __future__ import unicode_literals
+ 
+ import dnf.cli.demand
++from dnf.cli.demand import CleanCommandLock
+ 
+ import tests.support
+ 
+@@ -42,6 +43,7 @@ class DemandTest(tests.support.TestCase):
+         self.assertFalse(demands.sack_activation)
+         self.assertFalse(demands.root_user)
+         self.assertEqual(demands.success_exit_status, 0)
++        self.assertEqual(demands.clean_command_lock, CleanCommandLock.NONE)
+ 
+     def test_independence(self):
+         d1 = dnf.cli.demand.DemandSheet()
+-- 
+2.54.0
+

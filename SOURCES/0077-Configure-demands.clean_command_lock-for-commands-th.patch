@@ -1,0 +1,330 @@
+From 57292d5670793081a92f42e2bb4b3cafd8642d05 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ale=C5=A1=20Mat=C4=9Bj?= <amatej@redhat.com>
+Date: Wed, 8 Jul 2026 14:19:29 +0200
+Subject: [PATCH 4/4] Configure `demands.clean_command_lock` for commands that
+ need it
+
+---
+ dnf/cli/commands/__init__.py   | 7 +++++++
+ dnf/cli/commands/clean.py      | 4 ++++
+ dnf/cli/commands/distrosync.py | 2 ++
+ dnf/cli/commands/downgrade.py  | 2 ++
+ dnf/cli/commands/group.py      | 2 ++
+ dnf/cli/commands/history.py    | 3 +++
+ dnf/cli/commands/install.py    | 2 ++
+ dnf/cli/commands/module.py     | 4 ++++
+ dnf/cli/commands/reinstall.py  | 2 ++
+ dnf/cli/commands/shell.py      | 2 ++
+ dnf/cli/commands/swap.py       | 2 ++
+ dnf/cli/commands/upgrade.py    | 2 ++
+ 12 files changed, 34 insertions(+)
+
+diff --git a/dnf/cli/commands/__init__.py b/dnf/cli/commands/__init__.py
+index 80d67578..93d076de 100644
+--- a/dnf/cli/commands/__init__.py
++++ b/dnf/cli/commands/__init__.py
+@@ -24,6 +24,7 @@ Classes for subcommands of the yum command line interface.
+ from __future__ import print_function
+ from __future__ import unicode_literals
+ 
++from dnf.cli.demand import CleanCommandLock
+ from dnf.cli.option_parser import OptionParser
+ from dnf.i18n import _
+ 
+@@ -340,6 +341,7 @@ class RepoPkgsCommand(Command):
+             demands.sack_activation = True
+             demands.resolving = True
+             demands.root_user = True
++            demands.clean_command_lock = CleanCommandLock.READ
+ 
+         def run_on_repo(self):
+             self.cli._populate_update_security_filter(self.opts)
+@@ -392,6 +394,7 @@ class RepoPkgsCommand(Command):
+             demands.available_repos = True
+             demands.resolving = True
+             demands.root_user = True
++            demands.clean_command_lock = CleanCommandLock.READ
+ 
+         def run_on_repo(self):
+             """Execute the command with respect to given arguments *cli_args*."""
+@@ -447,6 +450,7 @@ class RepoPkgsCommand(Command):
+             demands.available_repos = True
+             demands.resolving = True
+             demands.root_user = True
++            demands.clean_command_lock = CleanCommandLock.READ
+ 
+         def run_on_repo(self):
+             """Execute the command with respect to given arguments *cli_args*."""
+@@ -535,6 +539,7 @@ class RepoPkgsCommand(Command):
+             demands.sack_activation = True
+             demands.resolving = True
+             demands.root_user = True
++            demands.clean_command_lock = CleanCommandLock.READ
+ 
+         def _replace(self, pkg_spec, reponame):
+             """Synchronize a package with another repository or remove it."""
+@@ -597,6 +602,7 @@ class RepoPkgsCommand(Command):
+             demands.available_repos = True
+             demands.resolving = True
+             demands.root_user = True
++            demands.clean_command_lock = CleanCommandLock.READ
+ 
+         def run_on_repo(self):
+             """Execute the command with respect to given arguments *cli_args*."""
+@@ -686,6 +692,7 @@ class RepoPkgsCommand(Command):
+             demands.available_repos = True
+             demands.resolving = True
+             demands.root_user = True
++            demands.clean_command_lock = CleanCommandLock.READ
+ 
+         def run_on_repo(self):
+             """Execute the command with respect to given arguments *cli_args*."""
+diff --git a/dnf/cli/commands/clean.py b/dnf/cli/commands/clean.py
+index 77f83f02..df14ebd7 100644
+--- a/dnf/cli/commands/clean.py
++++ b/dnf/cli/commands/clean.py
+@@ -21,6 +21,7 @@
+ from __future__ import absolute_import
+ from __future__ import unicode_literals
+ from dnf.cli import commands
++from dnf.cli.demand import CleanCommandLock
+ from dnf.i18n import _, P_
+ from dnf.yum import misc
+ 
+@@ -92,6 +93,9 @@ class CleanCommand(commands.Command):
+                            choices=_CACHE_TYPES.keys(),
+                            help=_('Metadata type to clean'))
+ 
++    def configure(self):
++        self.cli.demands.clean_command_lock = CleanCommandLock.WRITE
++
+     def run(self):
+         cachedir = self.base.conf.cachedir
+         md_lock = dnf.lock.build_metadata_lock(cachedir, True)
+diff --git a/dnf/cli/commands/distrosync.py b/dnf/cli/commands/distrosync.py
+index 3d472e5f..7896f61f 100644
+--- a/dnf/cli/commands/distrosync.py
++++ b/dnf/cli/commands/distrosync.py
+@@ -20,6 +20,7 @@
+ 
+ from __future__ import absolute_import
+ from dnf.cli import commands
++from dnf.cli.demand import CleanCommandLock
+ from dnf.i18n import _
+ 
+ 
+@@ -41,6 +42,7 @@ class DistroSyncCommand(commands.Command):
+         demands.available_repos = True
+         demands.resolving = True
+         demands.root_user = True
++        demands.clean_command_lock = CleanCommandLock.READ
+         commands._checkGPGKey(self.base, self.cli)
+         commands._checkEnabledRepo(self.base, self.opts.package)
+ 
+diff --git a/dnf/cli/commands/downgrade.py b/dnf/cli/commands/downgrade.py
+index 9e27962b..187e56d5 100644
+--- a/dnf/cli/commands/downgrade.py
++++ b/dnf/cli/commands/downgrade.py
+@@ -21,6 +21,7 @@
+ from __future__ import absolute_import
+ from __future__ import unicode_literals
+ from dnf.cli import commands
++from dnf.cli.demand import CleanCommandLock
+ from dnf.cli.option_parser import OptionParser
+ from dnf.i18n import _
+ 
+@@ -44,6 +45,7 @@ class DowngradeCommand(commands.Command):
+         demands.available_repos = True
+         demands.resolving = True
+         demands.root_user = True
++        demands.clean_command_lock = CleanCommandLock.READ
+ 
+         commands._checkGPGKey(self.base, self.cli)
+         if not self.opts.filenames:
+diff --git a/dnf/cli/commands/group.py b/dnf/cli/commands/group.py
+index 6de8baa1..9375f81d 100644
+--- a/dnf/cli/commands/group.py
++++ b/dnf/cli/commands/group.py
+@@ -22,6 +22,7 @@ from __future__ import absolute_import
+ from __future__ import unicode_literals
+ from dnf.comps import CompsQuery
+ from dnf.cli import commands
++from dnf.cli.demand import CleanCommandLock
+ from dnf.i18n import _, ucd
+ 
+ import libdnf.transaction
+@@ -363,6 +364,7 @@ class GroupCommand(commands.Command):
+ 
+         if cmd in ('install', 'upgrade'):
+             commands._checkGPGKey(self.base, self.cli)
++            demands.clean_command_lock = CleanCommandLock.READ
+ 
+     def run(self):
+         cmd = self.opts.subcmd
+diff --git a/dnf/cli/commands/history.py b/dnf/cli/commands/history.py
+index 21d04a1a..d01858b3 100644
+--- a/dnf/cli/commands/history.py
++++ b/dnf/cli/commands/history.py
+@@ -25,6 +25,7 @@ import hawkey
+ from dnf.i18n import _, ucd
+ from dnf.cli import commands
+ from dnf.transaction_sr import TransactionReplay, serialize_transaction
++from dnf.cli.demand import CleanCommandLock
+ 
+ import dnf.cli
+ import dnf.exceptions
+@@ -110,6 +111,7 @@ class HistoryCommand(commands.Command):
+             demands.available_repos = True
+             demands.resolving = True
+             demands.root_user = True
++            demands.clean_command_lock = CleanCommandLock.READ
+ 
+             # Override configuration options that affect how the transaction is resolved
+             self.base.conf.clean_requirements_on_remove = False
+@@ -124,6 +126,7 @@ class HistoryCommand(commands.Command):
+             demands.available_repos = True
+             demands.resolving = True
+             demands.root_user = True
++            demands.clean_command_lock = CleanCommandLock.READ
+ 
+             self._require_one_transaction_id = True
+             if not self.opts.transactions:
+diff --git a/dnf/cli/commands/install.py b/dnf/cli/commands/install.py
+index e13cc669..59bc2991 100644
+--- a/dnf/cli/commands/install.py
++++ b/dnf/cli/commands/install.py
+@@ -28,6 +28,7 @@ import hawkey
+ 
+ import dnf.exceptions
+ from dnf.cli import commands
++from dnf.cli.demand import CleanCommandLock
+ from dnf.cli.option_parser import OptionParser
+ from dnf.i18n import _
+ 
+@@ -62,6 +63,7 @@ class InstallCommand(commands.Command):
+         demands.available_repos = True
+         demands.resolving = True
+         demands.root_user = True
++        demands.clean_command_lock = CleanCommandLock.READ
+         commands._checkGPGKey(self.base, self.cli)
+         if not self.opts.filenames:
+             commands._checkEnabledRepo(self.base)
+diff --git a/dnf/cli/commands/module.py b/dnf/cli/commands/module.py
+index 0f584f90..9b55de80 100644
+--- a/dnf/cli/commands/module.py
++++ b/dnf/cli/commands/module.py
+@@ -20,6 +20,7 @@
+ from __future__ import print_function
+ 
+ from dnf.cli import commands, CliError
++from dnf.cli.demand import CleanCommandLock
+ from dnf.i18n import _
+ from dnf.module.exceptions import NoModuleException
+ from dnf.util import logger
+@@ -210,6 +211,7 @@ class ModuleCommand(commands.Command):
+             demands.sack_activation = True
+             demands.resolving = True
+             demands.root_user = True
++            demands.clean_command_lock = CleanCommandLock.READ
+ 
+         def run_on_module(self):
+             try:
+@@ -231,6 +233,7 @@ class ModuleCommand(commands.Command):
+             demands.sack_activation = True
+             demands.resolving = True
+             demands.root_user = True
++            demands.clean_command_lock = CleanCommandLock.READ
+ 
+         def run_on_module(self):
+             module_specs = self.module_base.upgrade(self.opts.module_spec)
+@@ -285,6 +288,7 @@ class ModuleCommand(commands.Command):
+             demands.sack_activation = True
+             demands.resolving = True
+             demands.root_user = True
++            demands.clean_command_lock = CleanCommandLock.READ
+             self.base.conf.module_stream_switch = True
+ 
+         def run_on_module(self):
+diff --git a/dnf/cli/commands/reinstall.py b/dnf/cli/commands/reinstall.py
+index 2b3ceac7..9d95cea0 100644
+--- a/dnf/cli/commands/reinstall.py
++++ b/dnf/cli/commands/reinstall.py
+@@ -21,6 +21,7 @@
+ from __future__ import absolute_import
+ from __future__ import unicode_literals
+ from dnf.cli import commands
++from dnf.cli.demand import CleanCommandLock
+ from dnf.cli.option_parser import OptionParser
+ from dnf.i18n import _
+ 
+@@ -54,6 +55,7 @@ class ReinstallCommand(commands.Command):
+         demands.available_repos = True
+         demands.resolving = True
+         demands.root_user = True
++        demands.clean_command_lock = CleanCommandLock.READ
+         commands._checkGPGKey(self.base, self.cli)
+         if not self.opts.filenames:
+             commands._checkEnabledRepo(self.base)
+diff --git a/dnf/cli/commands/shell.py b/dnf/cli/commands/shell.py
+index 18c886ff..f2a1bf32 100644
+--- a/dnf/cli/commands/shell.py
++++ b/dnf/cli/commands/shell.py
+@@ -19,6 +19,7 @@
+ #
+ 
+ from dnf.cli import commands
++from dnf.cli.demand import CleanCommandLock
+ from dnf.i18n import _, ucd
+ 
+ import dnf.util
+@@ -39,6 +40,7 @@ class ShellDemandSheet(object):
+     resolving = True
+     root_user = True
+     sack_activation = True
++    clean_command_lock = CleanCommandLock.READ
+ 
+ 
+ class ShellCommand(commands.Command, cmd.Cmd):
+diff --git a/dnf/cli/commands/swap.py b/dnf/cli/commands/swap.py
+index d44b3f4f..e61a24dc 100644
+--- a/dnf/cli/commands/swap.py
++++ b/dnf/cli/commands/swap.py
+@@ -20,6 +20,7 @@ from __future__ import absolute_import
+ from __future__ import unicode_literals
+ from dnf.i18n import _
+ from dnf.cli import commands
++from dnf.cli.demand import CleanCommandLock
+ 
+ import dnf.util
+ import logging
+@@ -47,6 +48,7 @@ class SwapCommand(commands.Command):
+         demands.available_repos = True
+         demands.resolving = True
+         demands.root_user = True
++        demands.clean_command_lock = CleanCommandLock.READ
+         commands._checkGPGKey(self.base, self.cli)
+         commands._checkEnabledRepo(self.base, [self.opts.install_spec])
+ 
+diff --git a/dnf/cli/commands/upgrade.py b/dnf/cli/commands/upgrade.py
+index 15e63136..fea0cb2d 100644
+--- a/dnf/cli/commands/upgrade.py
++++ b/dnf/cli/commands/upgrade.py
+@@ -26,6 +26,7 @@ import logging
+ import dnf.exceptions
+ import dnf.base
+ from dnf.cli import commands
++from dnf.cli.demand import CleanCommandLock
+ from dnf.cli.option_parser import OptionParser
+ from dnf.i18n import _
+ 
+@@ -56,6 +57,7 @@ class UpgradeCommand(commands.Command):
+         demands.available_repos = True
+         demands.resolving = True
+         demands.root_user = True
++        demands.clean_command_lock = CleanCommandLock.READ
+         commands._checkGPGKey(self.base, self.cli)
+         if not self.opts.filenames:
+             commands._checkEnabledRepo(self.base)
+-- 
+2.54.0
+

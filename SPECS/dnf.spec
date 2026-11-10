@@ -73,7 +73,7 @@ It supports RPMs, modules and comps groups & environments.
 
 Name:                 dnf
 Version:              4.14.0
-Release:              34%{?dist}
+Release:              37%{?dist}
 Summary:              %{pkg_summary}
 # For a breakdown of the licensing, see PACKAGE-LICENSING
 License:              GPLv2+
@@ -150,7 +150,13 @@ Patch68:              0068-automatic-Expand-email_to-in-command_email-emitter-t.
 Patch69:              0069-autoremove-warn-and-skip-dangling-protected-dependen.patch
 Patch70:              0070-bootc-unlock-only-if-usr-is-read-only.patch
 Patch71:              0071-bootc-Call-make_writable-when-DeploymentUnlockedStat.patch
-Patch72:              9999-change-bugtracker.diff
+Patch72:              0072-Preserve-ACL-when-rotating-logs.patch
+Patch73:              0073-history-info-Fix-Persistence-display-for-interval-qu.patch
+Patch74:              0074-Add-FileLock-for-read-write-and-blocking-non-blockin.patch
+Patch75:              0075-Generalize-_BoolDefault-to-just-_Default-allow-choic.patch
+Patch76:              0076-Add-clean-command-lock-demand.patch
+Patch77:              0077-Configure-demands.clean_command_lock-for-commands-th.patch
+Patch78:              9999-change-bugtracker.diff
 
 BuildArch:            noarch
 BuildRequires:        cmake
@@ -457,8 +463,17 @@ popd
 # bootc subpackage does not include any files
 
 %changelog
-* Tue May 19 2026 Release Engineering <releng@openela.org> - 4.14.0
+* Tue Nov 10 2026 Release Engineering <releng@openela.org> - 4.14.0
 - Add OpenELA bugtracker
+
+* Tue Jul 14 2026 Ales Matej <amatej@redhat.com> - 4.14.0-37
+- Add dedicated lock for clean command (RHEL-83124)
+
+* Wed May 20 2026 Evan Goode <egoode@redhat.com> - 4.14.0-36
+- history info: Fix Persistence display for interval queries (RHEL-154737)
+
+* Thu Mar 26 2026 Petr Pisar <ppisar@redhat.com> - 4.14.0-35
+- Preserve ACL when rotating logs (RHEL-122013)
 
 * Wed Mar 25 2026 Evan Goode <egoode@redhat.com> - 4.14.0-34
 - bootc: unlock only if /usr is read-only (RHEL-138512)
